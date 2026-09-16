@@ -45,8 +45,10 @@ files) does not apply to this project for v1.
 Scope," PRE-02 gap-analysis and entity-list sections all updated to reflect US + Canada scope,
 English-only.
 
-**Updated:** TDD — not yet written. FRD — not yet written. Both will carry Localization = NA
-(not US) and the English-only decision when first drafted.
+**Updated:** TDD — not yet written. FRD — not yet written. Both will carry the English-only
+decision when first drafted. **Correction (see DEFINE-005): Localization stays `US`**, not `NA`
+as originally written here — that was a drafting error, corrected once Step 01 explicitly
+confirmed `US` with its own reasoning.
 
 ## Issue DEFINE-003 — Pre-existing `.gitignore` Conflicted with Packaging & Repository Hygiene Rules
 
@@ -90,5 +92,36 @@ locally once symbols are downloaded.
 **Files affected:** `docs/ProjectParameters.md` (§1.4 Symbol Source left pending). Affects every
 future step that would normally invoke `al_*` MCP tools (§1.10 onward) — those steps proceed as
 document/source generation only in this session.
+
+## Issue DEFINE-005 — Step 02 (FRD) Review Findings: One Documentation Bug, Six Real Decisions
+
+**Problem:** The reasoning role's Step 02 review (`docs/FRD.md` §11) surfaced seven open items.
+
+**Resolution, item by item:**
+- **OQ-1 (Localization `US` vs `NA`):** Not a new decision — a documentation bug. Step 01
+  explicitly confirmed Localization = `US`, with the reasoning that it governs standard-field
+  access only, separate from the US/CA business-scope enforced in this extension's own
+  validation logic. `docs/ProblemStatement.md`'s "Countries and Languages" section and this
+  ChangeLog's DEFINE-002 entry both still said `NA` from an earlier draft — corrected in place.
+  **`docs/ProjectParameters.md` §1.1 (`US`) was correct all along and required no change.**
+- **OQ-2 (blank Country/Region):** Refused, same as any unsupported country — AJ Ansari.
+- **OQ-3 (Complaint Count definition):** Capture whatever figure BBB's page shows most
+  prominently (commonly a 3-year window); the TDD will state the exact on-page figure captured
+  once real page structure is examined — AJ Ansari.
+- **OQ-4 (who may refresh):** Credit & Risk only. Sales reps get read-only visibility (FR-6) but
+  not the maintenance permission set — AJ Ansari.
+- **OQ-5 (log retention):** Keep every Fetch Log entry forever; no purge logic in v1 — AJ Ansari.
+- **OQ-6 (deletion behavior):** Cascade delete — Fetch Log entries for a customer are removed
+  when that customer is deleted — AJ Ansari.
+- **OQ-7 (outbound HTTP permission, PA-3):** Not a decision — a verification task. Carried
+  forward as a to-do for AJ Ansari's local sandbox before Step 03's retrieval design is
+  finalized.
+
+**Files affected:** `docs/ProblemStatement.md` (Localization correction), `docs/FRD.md` (DR-4/
+FR-5 blank-country handling, FR-1/complaint count note, FR-11/DR-11 refresh permission,
+FR-10/retention, NFR-15/deletion behavior, §11 closed out, §12 sign-off).
+
+**Updated:** FRD updated directly (see above). TDD not yet written — will inherit all six
+resolved decisions at first draft.
 
 **Updated:** TDD/FRD will each carry a note on this workflow split when first drafted.

@@ -33,8 +33,16 @@ release; nothing prevents them from seeing the same fields if BC security grants
 - **Working language:** English.
 - **Target languages:** English-only, confirmed for Canada too (Canada is bilingual, but AJ
   Ansari decided against fr-CA translation support for v1 — see ChangeLog DEFINE-002). Expected
-  source wording: *US wording, no translation files* — to be confirmed formally at Step 01 §1.9.
-  Localization parameter will be **NA** (North America), not US-only, to reflect both countries.
+  source wording: *US wording, no translation files* — confirmed formally at Step 01 §1.9.
+  **Localization parameter is `US`** (Project Parameters §1.1) — a deliberate Step 01 choice,
+  not `NA`: Localization governs which *standard BC fields/tables* this extension may reference
+  (Standards Part 3), which is a separate concern from which countries the extension's own
+  business logic supports. This extension never references a US- or CA-specific standard field,
+  so a single Localization value works; the US/CA business scope is enforced entirely by this
+  extension's own Country/Region validation (see PRE-02 below), independent of this parameter.
+  An earlier draft of this section incorrectly said Localization would become `NA` — corrected
+  here at Step 02 (FRD) once the FRD's own review caught the inconsistency; see ChangeLog
+  DEFINE-005.
 
 ## Data Source & Integration Approach — ACCEPTED RISK
 

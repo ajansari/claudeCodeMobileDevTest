@@ -22,6 +22,7 @@
 |---|---|---|
 | Symbol Source (§1.4) | AJ Ansari, locally | Cannot download symbols in this session (no AL tooling) — filled in once AJ Ansari downloads symbols locally, per ChangeLog DEFINE-004. |
 | Actual compile-and-package (Step 07) | AJ Ansari, locally | This session writes AL source; AJ Ansari compiles/tests it in local VS Code + AL extension (ChangeLog DEFINE-004). |
+| **OQ-7 — outbound HTTP permission check (PA-3)** | AJ Ansari, locally | Verify whether this SaaS PTE's outbound HTTP calls are permitted by default on the target tenant, or need an administrator to enable them in Extension Management. Not a sign-off blocker (FRD §11), but must be confirmed before Step 03's retrieval design (E-9 `ocpfBbbProfileReader`) is finalized. |
 
 ## Milestones
 
@@ -52,3 +53,14 @@
   standards-compliant AL source with unverified standard-object references explicitly flagged.
   Fixed a pre-existing `.gitignore` conflict with Packaging/Repository Hygiene rules (DEFINE-003).
   Proceeding to Step 02 — FRD.
+- **2026-09-16** — Step 02 (FRD) drafted by the reasoning role (Opus 5) and reviewed. Full
+  entity/object inventory (13 objects against the 20-ID range — ~35–40% growth buffer), 14
+  design rules, 21 non-functional requirements, 11 platform-capability assumptions each rated
+  for confidence (two below High: outbound HTTP permission and AL's lack of an HTML parser).
+  Review surfaced 7 open items; all resolved (ChangeLog DEFINE-005): Localization `US` confirmed
+  correct (a documentation bug in ProblemStatement/ChangeLog fixed, not a new decision), blank
+  Country/Region refused, Complaint Count captures BBB's most prominent on-page figure, refresh
+  restricted to Credit & Risk only, Fetch Log kept forever, Fetch Log cascade-deletes with its
+  customer, and outbound-HTTP-permission verification carried forward as a local to-do (see
+  Open Decisions) rather than a sign-off blocker. **FRD signed off by AJ Ansari, 2026-09-16.**
+  Proceeding to Step 03 — Technical Design Document.

@@ -9,8 +9,8 @@
 | DEFINE | PRE-01 — State the Problem | Completed |
 | DEFINE | PRE-02 — Structured Gap Analysis | Completed |
 | DEFINE | 01 — Populate the Intake Sheet (Project Parameters) | Completed |
-| DESIGN | 02 — Craft the Functional Requirements Document (FRD) | In Progress |
-| DESIGN | 03 — Craft the Technical Design Document (TDD) | |
+| DESIGN | 02 — Craft the Functional Requirements Document (FRD) | Completed |
+| DESIGN | 03 — Craft the Technical Design Document (TDD) | In Progress |
 | DESIGN | 04 — Sanity Check and Validation | |
 | BUILD | 05 — Plan the Code | |
 | BUILD | 06 — Code Generation | |

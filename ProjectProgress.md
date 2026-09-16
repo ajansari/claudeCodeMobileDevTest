@@ -12,8 +12,8 @@
 | DESIGN | 02 — Craft the Functional Requirements Document (FRD) | Completed |
 | DESIGN | 03 — Craft the Technical Design Document (TDD) | Completed |
 | DESIGN | 04 — Sanity Check and Validation | Completed |
-| BUILD | 05 — Plan the Code | In Progress |
-| BUILD | 06 — Code Generation | |
+| BUILD | 05 — Plan the Code | Completed |
+| BUILD | 06 — Code Generation | In Progress |
 | BUILD | 07 — Compile and Package, Troubleshoot, Iterate | |
 | PROVE | 08 — Gap-Fit Test, Fidelity Validation | |
 | PROVE | 09 — Code Review | |

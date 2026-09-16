@@ -15,6 +15,7 @@
 | Working language: English | 2026-09-16 | AJ Ansari |
 | Notifications: Claude app | 2026-09-16 | AJ Ansari |
 | Approvers: One person for every role (Functional Consultant / Technical Lead / Dev Manager all AJ Ansari) | 2026-09-16 | AJ Ansari |
+| Batch run-through: run B1→B4 continuously, stop only on pre-flight failure or TDD deviation | 2026-09-16 | AJ Ansari |
 
 ## Open Decisions
 
@@ -101,3 +102,19 @@
   invalid AL pseudo-syntax fixed; a stale PRE-02 note (contradicting DR-6) corrected.
   **AJ Ansari reviewed both documents directly (files sent) and signed off Steps 03 + 04
   together, 2026-09-16.** DESIGN phase complete. Proceeding to Step 05 — Plan the Code.
+- **2026-09-16** — Step 05 (Plan the Code) complete. Scaffold built: `src/{CoreData,Logic,UI,
+  API,Security}/` folders per TDD §14's module layout, `Translations/` (empty, no `.xlf` shipped
+  per DEFINE-002), `outputAppPackage/`. `app.json` updated with both ID ranges (50601–50620,
+  50621–50650). `.vscode/settings.json` written with the SaaS PTE analyzer set (CodeCop + UICop
+  + PerTenantExtensionCop — never AppSourceCop). `.vscode/launch.json` scaffolded with
+  placeholder sandbox/tenant values for AJ Ansari to fill in locally. Fetched the AL MCP
+  launcher + `al-analyze.sh`/`.cmd` compile scripts into `scripts/` (gitignored) — this session
+  has no AL tooling to run them, but they're ready for AJ Ansari's local environment. Fetched
+  both optional knowledge companions (told AJ Ansari first, per Ops § Fetched Companions):
+  BCQuality to a sibling folder `../claudeCodeMobileDevTest.bcquality/` (outside the project
+  root, per its own compile-safety requirement) and the OCPF BC AL Patterns library into
+  `patterns/` (gitignored) — both with `SNAPSHOT.json` recording source/commit/fetch time.
+  `docs/PreflightChecklist.md` written (both passes, batch-specific notes, explicit about which
+  checks this session can satisfy vs. defer to local VT-1 verification). **Batch run-through
+  agreed: run B1→B4 continuously, stopping only on a pre-flight failure or TDD deviation.**
+  Proceeding to Step 06 — Code Generation.

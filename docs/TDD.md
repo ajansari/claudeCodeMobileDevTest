@@ -179,12 +179,17 @@ it consumes none of the range. It is registered in the Object Register with `—
 1. **M5 has no in-block buffer.** Two permission sets fill a two-ID block exactly. A third set (a
    future `OCPFBBB BBBRI, ADMIN`) draws from the **tail block**, not from a neighbouring module.
    This is deliberate: permission sets are the least likely objects in this extension to multiply.
-2. **Standards §5.2's "up to 50 objects → 10 IDs reserved" is not fully met, and cannot be.** The
-   allocated range is 20 IDs; 13 objects leaves 7. The runbook's own per-module rule (≥20%
-   unallocated) **is** met for M1–M4, and the overall buffer is 35%. **Flagged for Step 04:** a v2
-   that adds more than 7 objects (for example a Customer List extension, a setup table, an upgrade
-   codeunit, a job-queue refresh) needs an *additional* allocation recorded in Project Parameters
-   §1.2 — it must not borrow IDs from outside 50601–50620.
+2. **Standards §5.2's growth-buffer requirements — both of them — and how the capacity concern is
+   now resolved.** §5.2 carries two separate requirements: "up to 50 objects → 10 IDs reserved" (7
+   available against 13 objects in the primary range) and, separately, "for each module block, leave
+   at least 5–6 IDs unallocated at the end" (M1–M4 reserve only 1 each; M5 reserves 0). Neither was
+   fully met by the primary 50601–50620 range alone. **Resolved by AJ Ansari, 2026-09-16 (Sanity
+   Check finding F-S-4, ChangeLog DEFINE-010):** a second allocation, **50621–50650 (30 IDs)**, is
+   now reserved in Project Parameters §1.2 as unassigned v2 headroom — not yet assigned to any
+   module. It comfortably exceeds the four plausible v2 objects already named below (a replacement
+   provider codeunit, an install/upgrade codeunit pair, a setup table, and a Customer List page
+   extension) plus §5.2's per-module minimums, once those objects are actually grouped into modules
+   at that time.
 
 ### 3.5 Why there is a codeunit the FRD did not list (`ocpfBbbCustomerSubscribers`, 50608)
 
@@ -194,9 +199,11 @@ cascade-delete is a property of the *parent* table's relations, and we do not mo
 (DR-13). The supported mechanism is an **event subscriber on the Customer table's delete trigger**,
 and Standards §10.1 requires subscribers to live in a codeunit that exists for that purpose, never
 scattered through business logic. Hence one more codeunit than FRD §9 listed. **This is a delivery
-mechanic for an existing FRD requirement, not new scope** — no ChangeLog deviation entry is owed,
-but the Object Register records it and Step 08's gap-fit will see it as *built but not in the FRD →
-gap fill, accounted for here*.
+mechanic for an existing FRD requirement, not new scope, but Operating Rule 7 still requires it to
+be logged** — recorded in ChangeLog **DEFINE-012** (2026-09-16, AJ Ansari), alongside the
+`ocpfBbbRatingProvider` interface, which is likewise absent from FRD §9 (Sanity Check finding F-S-3).
+Both will be added to the FRD's object inventory at Step 10's re-baseline. The Object Register
+records both, and Step 08's gap-fit will see a logged decision instead of two unexplained objects.
 
 ### 3.6 E-6 (the FactBox): **not built** — decided here
 
@@ -204,10 +211,11 @@ FRD E-6 was explicitly conditional ("the TDD picks one"). **Decision: no FactBox
 satisfied by an inline group on the Customer Card page extension (50610).**
 
 Reasoning:
-- **FR-6a needs an editable field.** The BBB Profile URL must be maintainable on the customer record
-  by a Credit & Risk user. A FactBox (`PageType = CardPart`) is a display surface; putting the one
-  editable field of the feature into it, while the read-only fields sit beside it, splits one
-  coherent group across two objects for no gain.
+- **FR-6a needs an editable field, and splitting it from the rest gains nothing.** A `CardPart` can
+  in fact host editable fields — it is not purely a display surface (**F-M-2, ChangeLog
+  DEFINE-014**, correcting the original overstatement). The real argument is simpler: putting the
+  one editable field of the feature into a FactBox, while the read-only fields sit beside it on the
+  card, splits one coherent group across two objects for no gain.
 - **FR-6's actual requirement is "visible together, with the freshness stamp beside the values."** A
   single named group on the card delivers exactly that, in one object, with the refresh action
   adjacent.
@@ -394,7 +402,7 @@ resolution, not a deviation.
 | 4 | `"Attempted At"` | DateTime | `DataClassification = SystemMetadata` | Set explicitly by the orchestrator. Not the same thing as the platform's `SystemCreatedAt`: this one is part of the published API contract and is filterable by design. |
 | 5 | `"Outcome"` | Enum `ocpfBbbFetchStatus` | `DataClassification = SystemMetadata` | Only `Succeeded` (1) or `Failed` (2) is ever written here. `NeverFetched` (0) is meaningless on a log row and never occurs — documented rather than modelled as a third enum, which would have cost an object ID for no behavior. |
 | 6 | `"Failure Reason"` | Text[250] | `DataClassification = SystemMetadata` | Business-readable reason (the same label text the user was shown — §10.2), truncated to 250 with `CopyStr`. Blank on success. |
-| 7 | `"HTTP Status Code"` | Integer | `DataClassification = SystemMetadata` | Diagnostic only. **Never shown to a user** (NFR-9) — it lives here so UC-6 can tell a 404 from a 403 from a timeout. `0` when no response was received. |
+| 7 | `"Source Status Code"` | Integer | `DataClassification = SystemMetadata` | Diagnostic only — **the provider's own status code; HTTP for the current provider** (renamed from `HTTP Status Code`, ChangeLog **DEFINE-008**, resolving F-B-4: DR-3 forbids a transport-specific name in the permanent published contract). **Never shown to a user** (NFR-9) — it lives here so UC-6 can tell a 404 from a 403 from a timeout. `0` when no response was received. |
 | 8 | `"Profile URL Used"` | Text[250] | `DataClassification = CustomerContent` | Which page was actually read, at the time it was read (DR-5 traceability — the URL on the customer may have changed since). |
 | 9 | `"Duration (ms)"` | Integer | `DataClassification = SystemMetadata` | Round-trip duration. The evidence that distinguishes "BBB is slow" from "BBB is blocking us" (NFR-6 timeouts). |
 
@@ -446,19 +454,33 @@ braces, because the page-level property is what an OData client actually meets.
 **`"ocpfBbb Profile URL"` extra properties**
 - `ExtendedDatatype = URL;` — makes the card render it as a clickable link (FR-6a: "presented so it
   can be opened in a browser").
-- `OnValidate` — one rule only:
+- `OnValidate` — two rules:
   ```al
   trigger OnValidate()
+  var
+      FetchLog: Record "ocpfBbbFetchLog";
   begin
+      if not FetchLog.WritePermission() then
+          Error(NoUrlEditPermissionErr);
+
       if (Rec."ocpfBbb Profile URL" <> '') and
          (StrPos(LowerCase(Rec."ocpfBbb Profile URL"), HttpsPrefixTok) <> 1) then
           Error(ProfileUrlNotHttpsErr);
   end;
   ```
-  **Why only this rule.** A scheme check is a security rule — this extension must never make a
-  plaintext call. The *host* is deliberately not validated: **DR-5 says the URL is staff-entered and
-  staff-owned**, and a hardcoded `bbb.org` host check would be this extension quietly deciding what
-  a valid BBB page is. Labels: §10.2.
+  **Why two rules, and why the permission check came first (resolves F-B-1 / FR-11 / DR-6).**
+  Standard Customer write permission is not this extension's access model — a Sales rep with
+  ordinary `tabledata Customer = M` can edit any field on the Customer Card, including this one,
+  through permissioning this extension does not control. `FetchLog.WritePermission()` is the same
+  test the refresh action already uses (§6.5) to mean "holds `OCPFBBB BBBRI, EDIT`", so this
+  `OnValidate` now enforces FR-11's "only Credit & Risk may edit the BBB Profile URL" for **both** the
+  UI and the API — `Editable = true` at the field/page level says nothing about *who*; this trigger
+  does. **Decided by AJ Ansari, 2026-09-16** (ChangeLog **DEFINE-007**) — Option 2 of
+  `SanityCheck.md` F-B-1's three proposed resolutions. The scheme check remains a separate,
+  unconditional security rule — this extension must never make a plaintext call — and the *host* is
+  still deliberately not validated: **DR-5 says the URL is staff-entered and staff-owned**, and a
+  hardcoded `bbb.org` host check would be this extension quietly deciding what a valid BBB page is.
+  Labels: §10.2.
 - **No `OnValidate` that clears the retrieved values when the URL changes.** Tempting, and wrong:
   clearing them is an overwrite of good data by something that is not a successful fetch, which
   DR-1 forbids. The stale-but-stamped values stay until a refresh replaces them; `ocpfBbb Last
@@ -531,7 +553,7 @@ end;
 
 **Why this test and not something cleverer.** Every successful *and* failed refresh must insert a
 Fetch Log row (DR-2), so write permission on `ocpfBbbFetchLog` is precisely the permission a
-refresh needs. `OCPFBBB BBBRI, VIEW` grants `R`; `OCPFBBB BBBRI, EDIT` grants `RIMD` (§9). A Sales
+refresh needs. `OCPFBBB BBBRI, VIEW` grants `R`; `OCPFBBB BBBRI, EDIT` grants `RID` (§9). A Sales
 user therefore sees the data and a greyed-out action instead of a permission error — NFR-9. The
 orchestrator **re-checks the same condition server-side** (§7.2 step 1) so the rule holds for any
 caller, not just this page.
@@ -555,8 +577,15 @@ Card action (§6.5) and by drill-down from the table. Every *field* on it still 
 `ApplicationArea = All` (Standards §1.4).
 
 Columns, in order: `"Attempted At"`, `"Customer No."`, `"Outcome"`, `"Failure Reason"`,
-`"HTTP Status Code"`, `"Duration (ms)"`, `"Profile URL Used"`. All read-only; each with `Caption`,
+`"Source Status Code"`, `"Duration (ms)"`, `"Profile URL Used"`. All read-only; each with `Caption`,
 `ToolTip`, `ApplicationArea = All`.
+
+**FR-9's "filtered to failures" — resolved (F-S-11, ChangeLog DEFINE-014).** No saved view or
+`FilterGroup` is built for v1; the cheapest sufficient answer is that **`"Outcome"` is an ordinary
+filterable column on this page and on API page 50614** (§6.12), so a user or a Power BI/OData
+consumer filters it to `Failed` the same way as any other column — standard BC column filtering, with
+no extra object. Decided by **AJ Ansari, 2026-09-16**, and recorded here as FR-9's explicit
+resolution, not left as a silent gap.
 
 ### 6.7 `codeunit 50606 "ocpfBbbRatingMgt"` — M2, Batch B2
 
@@ -594,7 +623,7 @@ doing one thing and returning, neither raising UI.
 
 | Subscriber | Attribute | What it does |
 |---|---|---|
-| Cascade delete (OQ-6) | `[EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterDeleteEvent', '', false, false)]` — **event name, object, and parameter list all UNVERIFIED; confirm against local symbols** | `FetchLog.SetRange("Customer No.", Rec."No.");` *(field `"No."` — **UNVERIFIED**)* then `FetchLog.DeleteAll(false);` |
+| Cascade delete (OQ-6) | `[EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterDeleteEvent', '', false, false)]` — **event name, object, and parameter list all UNVERIFIED; confirm against local symbols** | `FetchLog.SetRange("Customer SystemId", Rec.SystemId);` then `FetchLog.DeleteAll(false);` — **keyed on the stable link, not `"Customer No."` (F-S-9, ChangeLog DEFINE-014), so the cascade no longer depends on the rename subscriber below having run for every past rename.** |
 | Rename follow-through | `[EventSubscriber(ObjectType::Table, Database::Customer, 'OnAfterRenameEvent', '', false, false)]` — **UNVERIFIED, confirm against local symbols** | Re-points existing log rows from `xRec."No."` to `Rec."No."` so FR-9's "filtered to a customer" keeps working after a customer number change. `"Customer SystemId"` needs no maintenance — it never changes, which is why it exists (§6.3 field 3). |
 
 **Standards §10.1 details that must not be lost in generation:**
@@ -605,10 +634,21 @@ doing one thing and returning, neither raising UI.
 - No `Message`, `Confirm`, or page call inside either subscriber — a customer delete can happen in a
   web-service or background session.
 
-**The `Permissions` property is why a Sales user can still delete a customer.** `OCPFBBB BBBRI,
-VIEW` grants only `R` on `ocpfBbbFetchLog`; without the codeunit-level grant the cascade would fail
-with a permission error on an operation the user is otherwise entitled to perform. **Step 12 must
-test customer deletion under *both* permission sets** (§9.4).
+**The `Permissions` property is intended to be why a Sales user can still delete a customer** —
+`OCPFBBB BBBRI, VIEW` grants only `R` on `ocpfBbbFetchLog`; without the codeunit-level grant the
+cascade would otherwise fail with a permission error on an operation the user is entitled to perform.
+**Step 12 must test customer deletion under *both* permission sets** (§9.4).
+
+**Two claims this design rests on, neither yet verified (F-B-3 — added to §16 as rows 19–20):**
+(i) that a codeunit's `Permissions` property elevates permissions for code running as an **event
+subscriber**, and (ii) that **execute** permission on a subscriber codeunit is required for it to
+fire at all. If local verification (VT-1) confirms (ii), **the fallback, decided now so it does not
+block Step 06 if needed:** grant `codeunit "ocpfBbbCustomerSubscribers" = X` somewhere every user
+already has it (for example, alongside the base `D365 READ` pairing documented in `Deployment.md`, or
+another equally universal grant) rather than relying on either BBB permission set — because a user
+holding **neither** set must still be able to delete a customer without error (DR-13, FRD §4.2). This
+is a **contingency note, not a decision needed now**; it only becomes live if VT-1 shows a problem.
+§9.4 adds the corresponding test case (test 5).
 
 ### 6.9 `interface "ocpfBbbRatingProvider"` — M2, Batch B2 — **no object ID**
 
@@ -629,10 +669,19 @@ interface "ocpfBbbRatingProvider"
     /// Attempts to obtain BBB rating data for one business profile.
     /// Returns true only when every out-parameter below holds a value actually read from the source.
     /// An implementation must never raise an Error: a failure is a false return plus a reason.
+    /// An implementation MUST perform its outbound call and response parsing inside a [TryFunction]
+    /// local procedure, and convert any caught failure into false + UnexpectedReasonTxt +
+    /// SourceStatusCode = 0 (F-B-2, ChangeLog DEFINE-014) — an uncaught runtime error here must
+    /// never be allowed to propagate and roll back the caller's stamp and log write.
     /// </summary>
-    procedure TryGetRating(ProfileUrl: Text; var Grade: Enum "ocpfBbbGrade"; var Accredited: Boolean; var ComplaintCount: Integer; var FailureReason: Text; var HttpStatusCode: Integer; var DurationMs: Integer): Boolean
+    procedure TryGetRating(ProfileUrl: Text; var Grade: Enum "ocpfBbbGrade"; var Accredited: Boolean; var ComplaintCount: Integer; var FailureReason: Text; var SourceStatusCode: Integer; var DurationMs: Integer): Boolean
 }
 ```
+
+**`SourceStatusCode` (renamed from `HttpStatusCode`, F-B-4 / ChangeLog DEFINE-008):** this is the
+provider's own status code — HTTP for the current provider, and whatever the equivalent is for any
+future provider that implements this interface (§7.1's swap procedure). Naming it `Http...` would
+have re-leaked DR-3 into the one place designed to keep it out.
 
 ### 6.10 `codeunit 50607 "ocpfBbbProfileReader"` — M2, Batch B2
 
@@ -654,6 +703,16 @@ interface "ocpfBbbRatingProvider"
 4. Map the response to the interface's out-parameters (§7.3's parse contract).
 5. Return `false` with a business-readable `FailureReason` for **everything** that is not a clean,
    fully-parsed success — including a response that arrives but cannot be interpreted.
+6. **Perform steps 1–4 inside a `[TryFunction]` local procedure** and treat any error that procedure
+   catches exactly like an ordinary parse failure: return `false`, `FailureReason :=
+   UnexpectedReasonTxt`, `SourceStatusCode := 0` — never let an uncaught runtime error escape
+   `TryGetRating` (F-B-2, ChangeLog **DEFINE-014**). `REVIEWER-UNVERIFIED:` the exact scope of what a
+   `[TryFunction]` does and does not catch (§16 row 19) must be confirmed against symbols/
+   documentation locally before Batch B2 is generated; a `TryFunction` also cannot undo a database
+   write, which is a further reason §7.2's fetch-before-any-write ordering is correct regardless.
+   **This is a Step 05 post-generation pre-flight check item for Batch B2:** confirm
+   `TryGetRating`'s outbound call and parsing sit inside a `[TryFunction]`, and that every path out
+   of it sets `SourceStatusCode`.
 
 **Responsibilities it must never take on:** writing to any table, showing any message, deciding
 whether a refresh is allowed, or knowing what a Customer is. Its only input is a URL string. If a
@@ -719,12 +778,22 @@ Fields: §7.5.
 | EntitySetName | `'ocpfBbbFetchLogEntries'` (22 chars ≤ 30) | Standards §2.7, §4.4 |
 | ODataKeyFields | `SystemId` | Standards §2.1 |
 | **Editable** | **`false`** — and **no** `DelayedInsert` | Standards §2.2: **audit / system table → read-only.** Setting both would be the Part 7 anti-pattern. |
+| **InsertAllowed / DeleteAllowed** | **`false`** / **`false`** | Explicit, not just implied by `Editable = false` (F-S-7, ChangeLog **DEFINE-014**) — see the deletion-decision paragraph below. |
 | Caption | `'Represents one attempt to retrieve Better Business Bureau rating data for a customer, including its outcome and any failure detail.'` | Standards §2.5 |
 | EntityCaption / EntitySetCaption | `'BBB Fetch Log Entry'` / `'BBB Fetch Log Entries'` — **translatable, decided by AJ Ansari (§11)** | Standards §8.6 |
 | File | `ocpfBbbFetchLogEntries.Page.al` |
 
 **The caption sentence deliberately says "one attempt".** DR-8: this endpoint is an attempt log, and
 `Documentation.md` must never describe it as grade history.
+
+**Deletion decision for this entity, stated explicitly (F-S-7).** Fetch Log rows are deleted only by
+the cascade-delete subscriber (§6.8, on the customer's own deletion); there is **no user-facing
+delete path, via the UI or the API.** `InsertAllowed = false` and `DeleteAllowed = false` on this page
+make that explicit at the API boundary rather than relying on `Editable = false` alone — which blocks
+field edits but was never established to also refuse an OData `DELETE` (`REVIEWER-UNVERIFIED`, added
+to §16 as a verification row). See also §9.2's narrowed `RID` grant (F-M-1), which removes the
+corresponding `M` at the permission layer — even though EDIT nominally could still delete a log row
+via `D`, no code path does, and the API now explicitly cannot either.
 
 Fields: §7.6.
 
@@ -784,16 +853,29 @@ the binding is a code decision, deliberately, and is recorded here as such.
 | # | Step | Rule it enforces |
 |---|---|---|
 | 1 | **Permission re-check.** `if not FetchLog.WritePermission() then Error(NoRefreshPermissionErr);` | OQ-4 server-side, not just a greyed-out button (§6.5). Safe to `Error` here: nothing has been written and no call has been made. |
-| 2 | **Preconditions, in this order, each ending in an `Error` with its own label** (FR-5): (a) `Rec."ocpfBbb Profile URL" = ''` → `NoProfileUrlErr`; (b) country/region blank → `CountryBlankErr`; (c) country/region resolves to neither US nor CA → `CountryNotSupportedErr` naming the actual code | FR-5, DR-4, OQ-2. |
-| 3 | **A precondition refusal is *not* a fetch attempt: nothing is stamped and nothing is logged.** | DR-2 says every *attempt* is logged. No external call was made, the user got an immediate, specific message, and there is nothing to diagnose later. **The technical reason this matters:** `Error` rolls the transaction back, so a log row written before it would vanish anyway — writing one would be a lie about durability. Recorded decision. |
+| 2 | **Preconditions, in this order, each ending in an `Error` with its own label** (FR-5): (a) `Rec."ocpfBbb Profile URL" = ''` → `NoProfileUrlErr`; (b) country/region blank → `CountryBlankErr`; (c) country/region resolves to neither US nor CA → `CountryNotSupportedErr` naming the actual code; **(d) `if not Cust.WritePermission() then Error(NoCustomerWritePermissionErr);`** — checked before the outbound call, so a Credit & Risk user with read-only rights on the customer master doesn't trigger a wasted external call and then meet a raw platform error on `Modify` (F-S-1, ChangeLog DEFINE-014) | FR-5, DR-4, OQ-2, F-S-1. |
+| 3 | **A precondition refusal is *not* a fetch attempt: nothing is stamped and nothing is logged.** | DR-2, **as clarified by FRD DR-2's amended wording (F-S-2, ChangeLog DEFINE-009): "attempt" means a retrieval was actually initiated, i.e. preconditions passed.** A precondition refusal is not an attempt, so it is shown to the user immediately and not logged — this now matches the FRD's own wording, not a TDD-level reinterpretation of it. No external call was made, and `Error` rolls back the transaction, so a log row written before it would vanish anyway — writing one would be a lie about durability. |
 | 4 | **Capture `AttemptedAt := CurrentDateTime();` and the URL, then call the provider** — before any database write in this transaction | §6.10's HTTP-after-write constraint; DR-2's stamp uses a single consistent timestamp. |
-| 5 | `Succeeded := Provider.TryGetRating(Url, Grade, Accredited, ComplaintCount, FailureReason, HttpStatusCode, DurationMs);` | The whole of DR-3's coupling. |
+| 5 | `Succeeded := Provider.TryGetRating(Url, Grade, Accredited, ComplaintCount, FailureReason, SourceStatusCode, DurationMs);` | The whole of DR-3's coupling. |
 | 6 | **On success:** write `"ocpfBbb Grade"`, `"ocpfBbb Accredited"`, `"ocpfBbb Complaint Count"` from the out-parameters | FR-3 |
 | 7 | **On failure: do not touch those three fields.** Not to blank them, not to zero the count, not to set a "stale" grade. | **DR-1 — the single most important line in this document.** |
-| 8 | **On both branches:** `"ocpfBbb Last Fetched" := AttemptedAt;` and `"ocpfBbb Fetch Status" := Succeeded ? Succeeded : Failed;` then `Cust.Modify(true);` | DR-2, FR-4 |
+| 8 | **On both branches:** `"ocpfBbb Last Fetched" := AttemptedAt;` and set `"ocpfBbb Fetch Status"` explicitly (see the corrected code immediately below the table — F-S-10) then `Cust.Modify(true);` | DR-2, FR-4 |
 | 9 | **On both branches:** insert one `ocpfBbbFetchLog` row (all nine fields, §6.3) | DR-2, FR-8 |
 | 10 | **Raise `OnAfterRefreshRatingAttempt(Cust, Succeeded)`** | §13.2 |
 | 11 | **Report to the user with a `Message`, never an `Error`:** success → `RefreshSucceededMsg`; failure → `RefreshFailedMsg` carrying the business-readable reason and stating that the previous values were left unchanged | FR-4, NFR-9 — **and a hard technical constraint: an `Error` here would roll back steps 8 and 9**, destroying exactly the stamp and log entry DR-2 demands. Any generated code that ends a *failed fetch* in `Error` is a defect, no matter how well-worded the message. |
+
+**Step 8, corrected (F-S-10, ChangeLog DEFINE-014):**
+
+```al
+if Succeeded then
+    Cust."ocpfBbb Fetch Status" := Enum::"ocpfBbbFetchStatus"::Succeeded
+else
+    Cust."ocpfBbb Fetch Status" := Enum::"ocpfBbbFetchStatus"::Failed;
+```
+
+This step previously read `"ocpfBbb Fetch Status" := Succeeded ? Succeeded : Failed;` — AL has no
+ternary conditional operator, and the expression was also self-referential (`Succeeded` naming both
+the Boolean and an enum member). Replaced with the explicit `if`/`else` shown here.
 
 **`Modify(true)` on the customer, not `Modify(false)`:** running the table's `OnModify` trigger keeps
 standard behavior and every other extension's subscribers intact — DR-13 ("the extension adds; it
@@ -826,13 +908,13 @@ The provider must produce, from one HTTPS response body:
 | `Accredited` | The page's accreditation state is positively identified as yes **or** no | Absent/ambiguous → whole call fails. **`false` must mean "the page said not accredited", never "we couldn't tell"** — that distinction is the difference between data and noise in a credit decision (UC-2). |
 | `ComplaintCount` | A non-negative integer read from the figure BBB displays most prominently | Absent/unparseable → whole call fails |
 | `FailureReason` | blank | One of §10.2's reason labels — business-readable, never a raw status code |
-| `HttpStatusCode` | the response code | the response code, or `0` if none arrived |
+| `SourceStatusCode` (renamed from `HttpStatusCode`, F-B-4 / ChangeLog DEFINE-008 — the provider's own status code, HTTP for the current provider) | the response code | the response code, or `0` if none arrived |
 | `DurationMs` | measured | measured |
 
 **HTTP status → user-facing reason mapping** (NFR-9: the code goes to the log, the sentence goes to
 the user):
 
-| Condition | Log `HTTP Status Code` | User-facing reason label |
+| Condition | Log `Source Status Code` | User-facing reason label |
 |---|---|---|
 | Outbound calls not permitted for this extension | `0` | `CallNotAllowedReasonTxt` |
 | No response within 20 s | `0` | `TimeoutReasonTxt` |
@@ -895,11 +977,18 @@ produces worse English. Use the escape.
 | `ocpfBbbLastFetched` | `Rec."ocpfBbb Last Fetched"` | **`false`** | |
 | `ocpfBbbFetchStatus` | `Rec."ocpfBbb Fetch Status"` | **`false`** | BO-4: a report can tell fresh from stale without leaving the endpoint. |
 
-**Why the field list is narrow, and why that is compliant.** Standards Part 3 §3.1 ("expose all
-applicable fields") governs a page whose job is to *be* the table's API. This page's job is BBB
-reporting (FR-7, BO-3); Microsoft's own API v2.0 `customers` endpoint already serves general
-customer integration, and duplicating it here would add surface with no requirement behind it.
-Recorded decision.
+**Why the field list is narrow — recorded as an approved deviation from Standards §3.1, approved by
+AJ Ansari, 2026-09-16 (F-S-5, ChangeLog DEFINE-011).** Standards Part 3 §3.1 ("expose all applicable
+fields") governs a page whose job is to *be* the table's API, and its literal text carves out no
+exception for a page whose business purpose is narrower reporting — so this is a deviation from the
+Guide's rule, not a reading of it that happens to already comply, and the Standards Guide's own
+precedence rule (the Guide wins on an AL rule) means it is recorded as a deviation rather than
+self-certified as compliance. **The reasoning for the deviation stands on its own merits:** nine
+BBB-relevant fields beside Microsoft's own API v2.0 `customers` endpoint — which already serves
+general customer integration — is a better-scoped API than a full duplicate of the Customer table,
+and NFR-8's FlowField argument (a portfolio-wide read must not measurably slow anything) independently
+argues against exposing Customer's own FlowFields here regardless. The field list stays as designed;
+only the compliance framing changes.
 
 **Localization = `US` exclusions (Standards Part 3, §3.2) — the full check:**
 - Every standard field exposed (`"No."`, `Name`, `"Country/Region Code"`) is a core W1 field with an
@@ -927,7 +1016,7 @@ Recorded decision.
 | `attemptedAt` | `Rec."Attempted At"` | |
 | `outcome` | `Rec."Outcome"` | serializes as `Succeeded` / `Failed` (enum value names) |
 | `failureReason` | `Rec."Failure Reason"` | |
-| `httpStatusCode` | `Rec."HTTP Status Code"` | acronym cased as a word; 14 chars |
+| `sourceStatusCode` | `Rec."Source Status Code"` | renamed from `httpStatusCode` (F-B-4, ChangeLog **DEFINE-008**) — the provider's own status code, HTTP for the current provider; 17 chars |
 | `profileUrlUsed` | `Rec."Profile URL Used"` | |
 | `durationMs` | `Rec."Duration (ms)"` | **§4.1: parentheses are removed** — `"Duration (ms)"` → `durationMs` |
 
@@ -974,8 +1063,9 @@ a plausible shape, not answers.
 obeys it exactly**. `ocpfBbbRatingMgt` genuinely needs two namespaces: it reads a field on Customer
 and resolves a Country/Region record (§7.2.1). The alternatives — fully qualifying one type inline,
 or splitting country resolution into a third codeunit to keep each file at one `using` — trade
-readability or an object ID for a formatting rule. **Recorded here for Step 04's review** rather
-than done quietly. No file exceeds two.
+readability or an object ID for a formatting rule. **Approved by AJ Ansari, 2026-09-16, at the
+Step 03/04 sign-off** (F-S-6, ChangeLog **DEFINE-011**), rather than left as a self-approved
+deviation. No file exceeds two.
 
 ---
 
@@ -1027,7 +1117,7 @@ consumers also need `D365 READ` (Standards §5.3). `Deployment.md` must state th
 IncludedPermissionSets = "OCPFBBB BBBRI, VIEW";
 
 Permissions =
-    tabledata "ocpfBbbFetchLog" = RIMD,
+    tabledata "ocpfBbbFetchLog" = RID,
     codeunit "ocpfBbbRatingMgt" = X,
     codeunit "ocpfBbbProfileReader" = X;
 ```
@@ -1035,16 +1125,19 @@ Permissions =
 This is the Credit & Risk set (FR-11, OQ-4): it can edit the profile URL, run the refresh, and
 therefore insert log rows. Pairs with `D365 BUS FULL ACCESS` or equivalent (Standards §5.3).
 
-**Why `RIMD` and not `RI`.** `I` covers the log write; `D` is what makes the cascade delete work for
-a Credit & Risk user; `M` is granted for completeness of the `RIMD` idiom — **no code path in this
-extension ever modifies a log row**, and the read-only list and API pages prevent a user from doing
-so (DR-6). Narrowing this to `RID` is a defensible Step 04 amendment.
+**Why `RID`, narrowed from the full `RIMD` idiom (F-M-1, ChangeLog DEFINE-014).** `I` covers the log
+write; `D` is what makes the cascade delete work for a Credit & Risk user. `M` is deliberately **not**
+granted: no code path in this extension ever modifies a log row, and the read-only list and API pages
+prevent a user from doing so (DR-6) — least privilege says don't grant what nothing uses. See also
+§6.12: API page 50614 now explicitly blocks insert and delete at the page level too (F-S-7), so this
+permission narrowing and that page-level block are two independent layers protecting the same
+audit-trail guarantee.
 
 ### 9.3 `tabledata` coverage check (Standards §5.3, `PTE0004`)
 
 | Table this extension owns | In VIEW | In EDIT |
 |---|---|---|
-| `ocpfBbbFetchLog` (50603) | `R` ✔ | `RIMD` ✔ |
+| `ocpfBbbFetchLog` (50603) | `R` ✔ | `RID` ✔ (narrowed from `RIMD`, F-M-1) |
 
 One owned table, granted in both sets. `ocpfBbbCustomerExt` is a **table extension**, not a table —
 its fields are covered by the base Customer `tabledata` permission the consumer already needs, which
@@ -1053,12 +1146,21 @@ is exactly why `Deployment.md` must name the `D365 READ` / `D365 BUS FULL ACCESS
 ### 9.4 What Step 12 must actually test here
 
 1. A VIEW-only user sees all six BBB fields and a **disabled** refresh action.
-2. A VIEW-only user **cannot** write the profile URL through the API (a PATCH is refused).
+2. **A user who does not hold `OCPFBBB BBBRI, EDIT` — including one paired with ordinary Customer
+   write rights (`D365 BUS FULL ACCESS`, a Sales role, etc.) — cannot write the profile URL through
+   either the UI or the API**; the `OnValidate` check added at §6.4 refuses it with
+   `NoUrlEditPermissionErr` regardless of the caller's standard Customer permissions. **(Corrected,
+   F-B-1, ChangeLog DEFINE-007** — this test previously described a VIEW-only user paired with
+   `D365 READ`, which is not the pairing a working Sales rep actually holds; the mechanism under test
+   is now the `OnValidate` enforcement itself, not the API page's own editability.)
 3. An EDIT user can edit the URL and run a refresh, and a log row appears.
 4. **A VIEW-only user can delete a customer and the log rows go with it** — this exercises the
    `Permissions` property on `ocpfBbbCustomerSubscribers` (§6.8) and is the one permission
    interaction in this design most likely to be wrong.
-5. Both API pages are readable with VIEW + `D365 READ`.
+5. **A user holding NEITHER BBB permission set deletes a customer — the cascade must still succeed
+   (or the fallback design at §6.8 applies).** (F-B-3, ChangeLog DEFINE-014 — the larger, previously
+   untested population: a warehouse clerk, an accounts-payable user, an integration account.)
+6. Both API pages are readable with VIEW + `D365 READ`.
 
 ---
 
@@ -1091,6 +1193,7 @@ this table, that is a TDD gap to log, not a literal to type.
 | Label name | Suffix | Text | Attributes |
 |---|---|---|---|
 | `NoRefreshPermissionErr` | Err | `'You do not have permission to refresh BBB data. Ask your administrator for the BBB Rating Insights - Edit permission set.'` | — |
+| `NoCustomerWritePermissionErr` | Err | `'You do not have write permission on customer %1. Ask your administrator for edit rights on the customer, then try refreshing BBB data again.'` | `Comment = '%1 = Customer No.'` — (F-S-1, ChangeLog DEFINE-014) |
 | `NoProfileUrlErr` | Err | `'Enter a BBB profile URL for customer %1 before refreshing BBB data.'` | `Comment = '%1 = Customer No.'` |
 | `CountryBlankErr` | Err | `'Customer %1 has no country/region. BBB covers the United States and Canada only, so enter the customer''s country/region before refreshing BBB data.'` | `Comment = '%1 = Customer No.'` |
 | `CountryNotSupportedErr` | Err | `'BBB covers the United States and Canada only. Customer %1 has country/region %2, so BBB data cannot be refreshed for this customer.'` | `Comment = '%1 = Customer No., %2 = Country/Region Code'` |
@@ -1101,6 +1204,7 @@ this table, that is a TDD gap to log, not a literal to type.
 
 | Label name | Suffix | Text | Attributes |
 |---|---|---|---|
+| `NoUrlEditPermissionErr` | Err | `'You do not have permission to edit the BBB Profile URL. Ask your administrator for the BBB Rating Insights - Edit permission set.'` | — (F-B-1, ChangeLog DEFINE-007) |
 | `ProfileUrlNotHttpsErr` | Err | `'The BBB profile URL must start with https://.'` | — |
 | `HttpsPrefixTok` | Tok | `'https://'` | **`Locked = true`** — a technical token (Standards §8.3) |
 
@@ -1204,6 +1308,11 @@ write down, not a silence.
 - **Step 12's upgrade-path test (Standards §9.6) does not apply to this release** — it is a first
   release. It applies from v2 onward, and `ReleaseTestResults.md` records that reason rather than
   leaving the test silently unrun.
+- **Standards §9.5 (keep side effects out of an upgrade session)** is satisfied trivially for this
+  release, and it is worth recording rather than leaving silent (F-M-7, ChangeLog DEFINE-014): the
+  only two subscribers this extension ships (§6.8) delete or re-point rows in response to a live
+  customer delete/rename, and neither runs any logic tied to an upgrade session. There is no upgrade
+  code in v1 for either to interact with.
 
 ---
 
@@ -1265,6 +1374,8 @@ raising both for a release.
 | **Naming conflicts** | None found. "BBB" names no standard BC concept, so no caption in this extension collides with standard terminology. Every field added to Customer is prefixed (§1.2), so another extension adding "BBB Grade" cannot collide. App Code `BBBRI` is unique among OCPF extensions using this prefix (Standards §5.4). |
 | **Customer rename** | Handled explicitly (§6.8) — the one "obvious later" defect this design goes out of its way to close now. |
 | **Uninstall behavior** (NFR-14) | Standard PTE behavior: this extension's fields and its own table are removed with it; **no standard customer data is touched, because nothing standard is ever written by this extension.** `Deployment.md` states this. |
+| **Standard-table `TableRelation` references into this extension** | **Checked, confirmed none (F-M-4).** No field on any standard BC table `TableRelation`-references anything this extension owns — the reverse-direction check the Step 04 checklist requires alongside the forward direction already covered above. |
+| **This extension's own stance on customer deletion** | **Decided explicitly (F-M-4): this extension never blocks customer deletion.** No subscriber in §6.8 raises an `Error` or otherwise prevents a standard delete; the cascade subscriber only removes this extension's own rows in response to one (DR-13, FRD §4.2). Previously implied by §6.8's design, not stated as a decision in its own right. |
 
 ---
 
@@ -1310,13 +1421,42 @@ One object per file, each named for its object. Folders mirror the modules in §
 | **OD-1** | API caption locking (§11), decided interactively per Standards §8.6. | **Resolved by AJ Ansari, 2026-09-16** (ChangeLog DEFINE-006). 50614 classified *Technical — admin*. Both API pages set **Translatable** captions. Recorded in §6.11, §6.12, §11. No longer blocks Step 06 Batch B4. |
 | **OD-2** | Optional, low priority: should the API expose a two-character display grade (`'A+'`) alongside the enum, since OData serializes `ocpfBbbGrade` as `"APlus"` (§6.1)? | **Accepted as proposed — no extra field.** It would be stored presentation data, and DR-8 keeps this extension to current values only. `Documentation.md` publishes the mapping table instead. Non-blocking; raised only so its absence is a recorded decision rather than an oversight. |
 
+### 15.1a Step 04 Sanity Check findings — resolved
+
+All findings in `docs/SanityCheck.md` were decided by **AJ Ansari, 2026-09-16**, through the
+interactive options mechanism. **None remain open.** §7's exit-gate table in `SanityCheck.md` is
+updated accordingly, and its own findings register (§5) is left untouched as the historical record.
+
+| # | Finding | Resolution | ChangeLog |
+|---|---|---|---|
+| F-B-1 | URL-maintenance authority unenforceable, asserted as enforced | Enforced in `OnValidate` (§6.4); FRD FR-11/DR-6 updated; §9.4 test 2 corrected | DEFINE-007 |
+| F-B-2 | No containment for an unexpected runtime error in the provider | `TryGetRating` body required inside a `[TryFunction]` (§6.9, §6.10); §16 row 19 | DEFINE-014 |
+| F-B-3 | Cascade-delete permission story asserted; "neither set" population untested | Two §16 rows (20–21); §9.4 test 5; fallback contingency recorded (§6.8) | DEFINE-014 |
+| F-B-4 | DR-3 leaked via `HTTP Status Code` into the published API | Renamed to `Source Status Code` / `sourceStatusCode` throughout (§6.3, §6.9, §7.3, §7.6) | DEFINE-008 |
+| F-S-1 | No precondition checks Customer write permission | Precondition (d) added (§7.2 step 2); label added (§10.2) | DEFINE-014 |
+| F-S-2 | Precondition refusals excluded from DR-2 by a TDD-level reinterpretation | FRD DR-2 wording amended; §7.2 step 3 updated to match | DEFINE-009 |
+| F-S-3 | Two objects beyond the FRD inventory, logging waived by the TDD itself | Logged; §3.5 corrected; FRD re-baseline noted for Step 10 | DEFINE-012 |
+| F-S-4 | Standards §5.2's per-module buffer met by no module | Second allocation 50621–50650 recorded (Parameters §1.2, §3.4) | DEFINE-010 |
+| F-S-5 | Narrow API field list self-certified as compliant with §3.1 | Reworded as a recorded, approved deviation (§7.5) | DEFINE-011 |
+| F-S-6 | Two-`using` deviation self-approved | Approved by AJ Ansari at the Step 03/04 sign-off (§8.1) | DEFINE-011 |
+| F-S-7 | 50614 sets neither `InsertAllowed`/`DeleteAllowed`; log-row deletion undecided | Both set `false`; deletion decision stated (§6.12); §16 row 22 | DEFINE-014 |
+| F-S-8 | UNVERIFIED discipline covers BC objects but not platform behavior | 8 rows added to §16 (rows 20–21, 23–28) | DEFINE-014 |
+| F-S-9 | Cascade keyed on the volatile `"Customer No."`, not the stable key | Re-keyed on `"Customer SystemId"` (§6.8) | DEFINE-014 |
+| F-S-10 | §7.2 step 8 written in syntax AL does not have | Replaced with explicit `if`/`else` (§7.2) | DEFINE-014 |
+| F-S-11 | FR-9's "filtered to failures" has no mechanism | Standard column filtering on `"Outcome"`, recorded as the resolution (§6.6); FRD FR-9 updated | DEFINE-014 |
+| F-S-12 | Stale `ProblemStatement.md` R/W column contradicts DR-6 | `ProblemStatement.md` and FRD §10.1 corrected | DEFINE-013 |
+| F-M-1 … F-M-7 | Minor findings (see `SanityCheck.md` §5) | All applied as specified — §9.2 (RID), §3.6 (unchanged, F-M-2 wording only — see below), ObjectRegister.md (F-M-3, F-M-5), §13.3 (F-M-4), §15.2 (F-M-6), §12/§16 (F-M-7) | DEFINE-014 |
+
+**F-M-2 note:** §3.6's E-6-not-built decision is unchanged; only its FactBox-as-display-surface
+argument was reworded — see §3.6 below.
+
 ### 15.2 Verification tasks — not decisions, but they gate Step 06
 
 | # | Task | Gates |
 |---|---|---|
 | **VT-1** | **Work §16's symbol-verification worksheet locally** and replace every UNVERIFIED marker. | **All of BUILD.** |
-| **VT-2** | **OQ-7 / PA-3, still open from Step 02:** confirm on the target sandbox whether outbound HTTP is permitted for a PTE by default, and what an administrator must switch on. | Batch B2's error handling and `Deployment.md`. Does **not** block B1. |
-| **VT-3** | **OQ-3 and the parse markers (§7.3):** open a real BBB profile page locally and pin down the four items in §7.3's table, including what the complaint figure actually counts. | Batch B2's `ocpfBbbProfileReader` only — every other object can be built without it. |
+| **VT-2** | **OQ-7 / PA-3, still open from Step 02:** confirm on the target sandbox whether outbound HTTP is permitted for a PTE by default, and what an administrator must switch on. | **Moved up: before Step 05 closes (F-M-6, ChangeLog DEFINE-014)** — if outbound calls cannot be enabled on this tenant, the feature has no value at all, and that is a scope conversation, not a Batch B2 error branch. |
+| **VT-3** | **OQ-3 and the parse markers (§7.3):** open a real BBB profile page locally and pin down the four items in §7.3's table, including what the complaint figure actually counts. | **Moved up: before Step 05 closes (F-M-6, ChangeLog DEFINE-014)**, alongside VT-2 — both determine whether the feature can work at all before Batch B2 is scheduled. |
 | **VT-4** | Confirm on the sandbox whether BC really refuses an outbound call after a write in the same transaction (§6.10). | Nothing — §7.2's ordering is correct either way. Confirm so the reason is recorded, not assumed. |
 
 ---
@@ -1349,6 +1489,18 @@ placeholders.
 | 16 | That every standard field exposed at §7.5 is `ObsoleteState = Active` and outside 10,000–89,999 | **UNVERIFIED** | §7.5, Part 3 |
 | 17 | AL runtime `16.0` and BC minimum `27.0.0.0` against the actual sandbox | **UNVERIFIED** (Parameters §1.4) | `app.json` |
 | 18 | Record the **Symbol Source** in Project Parameters §1.4 once symbols are downloaded | blank today | §1 |
+| 19 | `[TryFunction]` semantics — exactly what a caught failure inside one does and does not roll back / catch | **REVIEWER-UNVERIFIED** (Sanity Check F-B-2) | §6.9, §6.10 |
+| 20 | A codeunit's `Permissions` property elevating permissions for code running as an **event subscriber** | **REVIEWER-UNVERIFIED** (F-B-3 / F-S-8 #1) | §6.8, §9.1 |
+| 21 | Execute permission on a subscriber codeunit required for the subscriber to fire | **REVIEWER-UNVERIFIED** (F-B-3 / F-S-8 #2) | §6.8, §9.1 |
+| 22 | `Editable = false` on an API page refuses an OData `DELETE`, not just field edits | **REVIEWER-UNVERIFIED** (F-S-7) | §6.12 |
+| 23 | `Record.WritePermission()` semantics as a refresh-authority / URL-edit-authority proxy | **UNVERIFIED** (F-S-8 #3) | §6.4, §6.5, §7.2 |
+| 24 | A `pageextension` may declare `trigger OnOpenPage()` and use a page global in an action's `Enabled` property | **UNVERIFIED** (F-S-8 #4) | §6.5 |
+| 25 | `ExtendedDatatype = URL` renders a clickable link on the card | **UNVERIFIED** (F-S-8 #5) | §6.4 |
+| 26 | Table-field `Editable = false` blocks OData writes but not AL writes | **UNVERIFIED** (F-S-8 #6) | §6.4 |
+| 27 | Extension field IDs on a standard table must fall inside the extension's own allocated object range | **UNVERIFIED** (F-S-8 #7) | §6.4 |
+| 28 | `SystemCreatedBy` on a custom table records who ran the attempt | **UNVERIFIED** (F-S-8 #8) | §6.3 |
+| 29 | Whether AL's `HttpResponseMessage` exposes a dedicated "blocked by environment" indicator, so a blocked outbound call is detected directly rather than inferred from a status code of `0` | **REVIEWER-UNVERIFIED** (PA-3, SanityCheck.md §2) | §6.10, §7.3 |
+| 30 | The target sandbox's own Localization matches `US` when symbols are downloaded | **UNVERIFIED** (F-M-7) | Parameters §1.4 |
 
 **A marker that survives into generated AL is a defect, not a caveat.**
 
@@ -1360,11 +1512,12 @@ placeholders.
 |---|---|
 | Can a developer who has never seen this project build every object from this document alone? | **Yes, with one bounded exception:** `ocpfBbbProfileReader`'s parse markers (§7.3, VT-3) cannot be written without a live BBB page, which no document could supply. The contract, the failure semantics, and the isolation boundary around them **are** fully specified, so the other twelve objects are unblocked. |
 | Does any rule here require knowledge outside the document? | **No.** Every Standards rule applied is restated where it is applied. |
-| Is every object ID inside 50601–50620? | **Yes** — §3.3, with 7 IDs reserved. |
-| Does every API page carry exactly one of `DelayedInsert = true` / `Editable = false`? | **Yes** — 50613 `DelayedInsert = true` (master data), 50614 `Editable = false` (audit). §6.11, §6.12. |
-| Is every standard-BC identifier marked UNVERIFIED at every occurrence? | **Yes**, and §16 collects them into one worksheet. |
-| Is every FRD entity E-1…E-13 accounted for? | **Yes** — E-1…E-5 and E-7…E-13 built; **E-6 deliberately not built** with reasoning (§3.6), its ID reserved; one object added beyond the FRD list (§3.5) with reasoning. |
-| Are the FRD's non-negotiables traceable to concrete mechanisms? | DR-1 → §7.2 step 7; DR-2 → §7.2 steps 8–9 and the `Message`-not-`Error` rule at step 11; DR-3 → §6.9, §7.1; DR-4 → §7.2.1; DR-5/DR-6 → §6.4; DR-7 → §13.2; DR-8 → §6.3, §6.12; DR-9 → §6.6, §7.1; DR-10 → §10.1; DR-11 → §9; DR-12 → §3; DR-13 → §6.11, §13.3; DR-14 → §0.3, §16. |
+| Is every object ID inside an allocated range? | **Yes** — every v1 object is inside the primary 50601–50620 range (§3.3), with 7 IDs reserved there. A second, wholly unused allocation, **50621–50650, is reserved for v2 headroom** (Parameters §1.2, F-S-4, ChangeLog DEFINE-010); no v1 object draws from it. |
+| Does every API page carry exactly one of `DelayedInsert = true` / `Editable = false`? | **Yes** — 50613 `DelayedInsert = true` (master data), 50614 `Editable = false` (audit), and 50614 now also sets `InsertAllowed = false` / `DeleteAllowed = false` explicitly (F-S-7). §6.11, §6.12. |
+| Is every standard-BC identifier marked UNVERIFIED at every occurrence? | **Yes**, and §16 collects them into one worksheet — now extended to 30 rows to also cover the platform-*behavior* assertions the Step 04 Sanity Check found unmarked (F-B-2, F-B-3, F-S-7, F-S-8, F-M-7). |
+| Is every FRD entity E-1…E-13 accounted for? | **Yes** — E-1…E-5 and E-7…E-13 built; **E-6 deliberately not built** with reasoning (§3.6), its ID reserved; one object added beyond the FRD list (§3.5), now logged (ChangeLog DEFINE-012, F-S-3) with reasoning. |
+| Are the FRD's non-negotiables traceable to concrete mechanisms? | DR-1 → §7.2 step 7; DR-2 → §7.2 steps 8–9 (as clarified by the FRD's amended wording, F-S-2) and the `Message`-not-`Error` rule at step 11; DR-3 → §6.9, §7.1, §7.3, §7.6 (transport-neutral naming, F-B-4); DR-4 → §7.2.1; DR-5 → §6.4; **DR-6 → §6.4's `Editable = false` on five fields, and — for "owned by *which* users" — the field's `OnValidate` permission check (F-B-1)**; DR-7 → §13.2; DR-8 → §6.3, §6.12; DR-9 → §6.6, §7.1; DR-10 → §10.1; DR-11 → §9; DR-12 → §3; DR-13 → §6.11, §13.3; DR-14 → §0.3, §16. |
+| Does the design match the Step 04 Sanity Check's resolved findings? | **Yes** — all 4 blocking and 12 should-fix findings, plus the 7 minor findings, are resolved; see §15.1a for the full cross-reference to `SanityCheck.md` and the ChangeLog. |
 
 ---
 

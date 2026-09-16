@@ -13,6 +13,13 @@ Guide v1.9.0.0 (Parts 1–10, Appendices A–E).
 `SanityCheck.md` (one sign-off, Approvers = one person) should not be given until B-1 … B-4 are
 resolved or explicitly accepted with reasoning.
 
+> **Resolution status (added 2026-09-16, main role, after AJ Ansari's decisions):** all 4 blocking
+> and all 12 should-fix findings, plus all 7 minor findings, are now resolved. This document is left
+> as the historical record of the review and is not edited further for content — see **§7a
+> Resolution Log** at the end of this file for what changed and where, and `docs/TDD.md` §15.1a for
+> the same cross-reference from the design-document side. Every resolution is also logged in
+> `docs/ChangeLog.md` (DEFINE-007 through DEFINE-014).
+
 ---
 
 ## 0. How this review was run, and its own limits
@@ -517,9 +524,9 @@ during this review, not accepted from the TDD's own assertion:
 
 | Gate condition | Status |
 |---|---|
-| **0 blocking issues** | **Not met — 4 blocking findings.** |
-| Every gap resolved or explicitly deferred with reasoning | Pending: 4 blocking + 12 should-fix require a recorded decision each. |
-| Technical Lead sign-off (one sign-off covering `TDD.md` + `SanityCheck.md`, Approvers = one person) | **Not yet due.** |
+| **0 blocking issues** | **Met, as of 2026-09-16.** All 4 blocking findings (F-B-1 … F-B-4) resolved by AJ Ansari through the interactive options mechanism — see §7a below. |
+| Every gap resolved or explicitly deferred with reasoning | **Met.** All 12 should-fix findings and all 7 minor findings have a recorded decision each (§7a). |
+| Technical Lead sign-off (one sign-off covering `TDD.md` + `SanityCheck.md`, Approvers = one person) | **Due now** — the blocking condition above is what this sign-off was withheld for. |
 
 **Recommendation to AJ Ansari.** This is a strong TDD — more rigorous than most, with genuinely
 good work on DR-1/DR-4/DR-8 and an honest UNVERIFIED discipline for BC objects. None of the four
@@ -541,6 +548,45 @@ separate approval.**
 
 ---
 
+## 7a. Resolution Log (added 2026-09-16, main role — this document's content above is otherwise left
+untouched as the historical record of the independent review)
+
+All decisions below were made by **AJ Ansari, 2026-09-16**, through the interactive options
+mechanism, and applied by the main role. Full cross-reference is `docs/TDD.md` §15.1a; each
+resolution's design-document detail is cited there.
+
+| # | Finding | Decision | Applied in | ChangeLog |
+|---|---|---|---|---|
+| F-B-1 | URL-maintenance authority unenforceable | Option 2 — "Enforce in `OnValidate`" | TDD §6.4, §9.4, §10.2; FRD FR-11, DR-6, §10.1 | DEFINE-007 |
+| F-B-2 | No containment for an unexpected provider error | `TryGetRating` required inside a `[TryFunction]` | TDD §6.9, §6.10, §16 | DEFINE-014 |
+| F-B-3 | Cascade-delete permission story asserted, untested for "neither set" | Two §16 rows + §9.4 test 5 + fallback contingency | TDD §6.8, §9.4, §16 | DEFINE-014 |
+| F-B-4 | DR-3 leaked via `HTTP Status Code` | Option 1 — "Rename to transport-neutral" | TDD §6.3, §6.9, §6.10, §7.2, §7.3, §7.6 | DEFINE-008 |
+| F-S-1 | No precondition checks Customer write permission | Precondition (d) + new label | TDD §7.2, §10.2 | DEFINE-014 |
+| F-S-2 | Precondition refusals excluded from DR-2 by TDD reinterpretation | Amend DR-2's wording | FRD DR-2; TDD §7.2 step 3 | DEFINE-009 |
+| F-S-3 | Two objects beyond FRD inventory, logging waived | Logged; FRD re-baseline noted for Step 10 | TDD §3.5 | DEFINE-012 |
+| F-S-4 | Standards §5.2 per-module buffer met by no module | Second allocation, 50621–50650 | Parameters §1.2; TDD §3.4; ObjectRegister §1 | DEFINE-010 |
+| F-S-5 | Narrow API field list self-certified as compliant | "Approve as a recorded deviation" | TDD §7.5 | DEFINE-011 |
+| F-S-6 | Two-`using` deviation self-approved | "Approve the exception" | TDD §8.1 | DEFINE-011 |
+| F-S-7 | 50614 sets neither `InsertAllowed`/`DeleteAllowed`; deletion undecided | Both set `false`; deletion decision stated | TDD §6.12, §16 | DEFINE-014 |
+| F-S-8 | UNVERIFIED discipline stops at BC objects | 8 rows added to §16 | TDD §16 | DEFINE-014 |
+| F-S-9 | Cascade keyed on the volatile `"Customer No."` | Re-keyed on `"Customer SystemId"` | TDD §6.8 | DEFINE-014 |
+| F-S-10 | §7.2 step 8 uses non-AL ternary syntax | Explicit `if`/`else` | TDD §7.2 | DEFINE-014 |
+| F-S-11 | FR-9's "filtered to failures" has no mechanism | Standard column filtering, recorded as resolution | TDD §6.6; FRD FR-9 | DEFINE-014 |
+| F-S-12 | Stale `ProblemStatement.md` contradicts DR-6 | Corrected `ProblemStatement.md` and FRD §10.1 | ProblemStatement.md; FRD §10.1 | DEFINE-013 |
+| F-M-1 | EDIT grant `RIMD` wider than needed | Narrowed to `RID` | TDD §9.2, §9.3; ObjectRegister §2 | DEFINE-014 |
+| F-M-2 | "A FactBox is a display surface" overstated | Reworded; E-6 decision unchanged | TDD §3.6 | DEFINE-014 |
+| F-M-3 | ObjectRegister OD-1 stale | Corrected to "Resolved, DEFINE-006" | ObjectRegister §6 | DEFINE-014 |
+| F-M-4 | Reverse `TableRelation` check and customer-deletion stance unrecorded | Two lines added | TDD §13.3 | DEFINE-014 |
+| F-M-5 | Next free Customer extension field ID unrecorded | Note added: 50607 | ObjectRegister §3 | DEFINE-014 |
+| F-M-6 | VT-2/VT-3 scheduled at/inside Batch B2 | Moved to "before Step 05 closes" | TDD §15.2 | DEFINE-014 |
+| F-M-7 | Standards §9.5 and sandbox localization unrecorded | One line + one §16 row added | TDD §12, §16 | DEFINE-014 |
+
+**Exit gate re-assessment:** with all 23 findings resolved, the Step 04 exit gate (§7 above) is met.
+Technical Lead sign-off on `TDD.md` + `SanityCheck.md` together (Approvers = one person) is due.
+
+---
+
 *Prepared by the reasoning role (independent reviewer) under the OnlyCopilotFans Agentic Dev
 Framework v3.3.0.0, runbook Step 04. No design document was edited by this reviewer: findings only.
-`FRD.md` and `TDD.md` are untouched.*
+`FRD.md` and `TDD.md` are untouched by the review itself — §7a above records the main role's later
+resolution pass.*

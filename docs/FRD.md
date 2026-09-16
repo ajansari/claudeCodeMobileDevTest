@@ -178,11 +178,11 @@ document and needs its own approval (Operating Rule 6).
 | # | Rule | Rationale |
 |---|---|---|
 | **DR-1** | **A failed refresh never overwrites good data.** On any failure — unreachable page, blocked request, changed page structure, unrecognized content — the previously stored grade, accreditation status, and complaint count are left exactly as they were, and only the status and timestamp change. | PRE-01 Resolved Decisions. Silent replacement of good data with blank data is the single worst failure mode for a decision-support field. |
-| **DR-2** | **Every refresh attempt is stamped and logged, success or failure.** The customer record always shows when the last attempt ran and how it ended; the audit log always gains an entry. | BO-4, BO-5. An unofficial source with no SLA is only trustworthy if its failures are loud. |
+| **DR-2** | **Every refresh attempt is stamped and logged, success or failure.** The customer record always shows when the last attempt ran and how it ended; the audit log always gains an entry. **"Attempt" means a retrieval was actually initiated — i.e., its preconditions passed.** A precondition refusal (no profile URL, an unsupported or blank country/region) is not an attempt: no external call was made, so it is shown to the user immediately and is not logged. | BO-4, BO-5. An unofficial source with no SLA is only trustworthy if its failures are loud. **Clarified 2026-09-16, ChangeLog DEFINE-009, resolving Sanity Check finding F-S-2** — writing a log row for a refusal would misrepresent durability anyway, since `Error` rolls back any row written before it. |
 | **DR-3** | **The retrieval mechanism is a separable component.** Nothing user-facing — no field, no page, no API endpoint, no permission set — may depend on *how* the data was obtained. Replacing scraping with an official API must not change any of them. | ChangeLog DEFINE-001's explicit commitment; BO-6. |
 | **DR-4** | **The refresh action is available only for customers whose country/region is the United States or Canada.** Any other value — including blank — is refused with a clear, actionable message naming the reason — never a silent no-op and never a technical error. | PRE-02 Resolved Decisions; ChangeLog DEFINE-002 and DEFINE-005 (OQ-2). BBB does not cover other countries, so a "successful" fetch there would be meaningless, and a blank country/region is treated the same as an unsupported one rather than assumed to be in-scope. |
 | **DR-5** | **The BBB profile URL is staff-entered and staff-owned.** The extension never guesses, searches for, or derives it, and never silently substitutes a different one. | PRE-01 Resolved Decisions. Attaching the wrong company's rating to a customer is a serious data-integrity failure. |
-| **DR-6** | **Retrieved values are system-owned; the profile URL is user-owned.** Grade, accreditation status, complaint count, last-fetched stamp, and fetch status are written by the refresh; the profile URL is maintained by staff. The audit log is system-written and never user-editable. | Keeps ownership of each field unambiguous, which is what makes DR-1 and DR-2 enforceable. |
+| **DR-6** | **Retrieved values are system-owned; the profile URL is user-owned — specifically, owned by the maintenance (EDIT) permission set, not by Customer-modify rights generally.** Grade, accreditation status, complaint count, last-fetched stamp, and fetch status are written by the refresh; the profile URL is maintained only by a user holding `OCPFBBB BBBRI, EDIT`, enforced in code (the field's own `OnValidate`), both through the UI and the API. The audit log is system-written and never user-editable. | Keeps ownership of each field unambiguous, which is what makes DR-1 and DR-2 enforceable. **Clarified 2026-09-16, ChangeLog DEFINE-007, resolving Sanity Check finding F-B-1** — the original wording did not state *which* users own the URL, which this extension's own permission sets could not otherwise enforce on a standard-table field. |
 | **DR-7** | **BBB data is advisory only.** No automatic credit hold, block, posting restriction, pricing change, or workflow may be driven by the grade. It informs a human decision; it never makes one. | The source is unofficial, unguaranteed, and out of our control (§7.1). Automating a control on it would convert a disclosed data-quality risk into an operational one. |
 | **DR-8** | **Current value only — this extension keeps no grade history.** The audit log records *attempts*, not a time series of grades, and must never be presented or documented as grade history. | PRE-01 Resolved Decisions; §1.3. |
 | **DR-9** | **No configuration surface in v1.** No setup table, no assisted-setup wizard, no activity cues, no Departments/Tell Me placement. | PRE-02 Resolved Decisions; Project Parameters §1.6. |
@@ -265,7 +265,10 @@ Log entries are written by the system and are never edited by users (DR-6).
 
 **FR-9 — The log is reviewable.** An administrator or support user can review refresh attempts in the
 BC client and through the API surface, filtered to a customer or to failures, to answer "why did this
-stop working, and when did it start failing?" (UC-6).
+stop working, and when did it start failing?" (UC-6). **"Filtered to failures" is satisfied by
+standard column filtering on the log's `Outcome`/`outcome` field**, in both the BC client list page
+and the API — no dedicated saved view or `FilterGroup` is built for v1; this is FR-9's explicit
+resolution (ChangeLog **DEFINE-014**, Sanity Check finding F-S-11), not an open gap.
 
 **FR-10 — Log retention.** Every Fetch Log entry is kept indefinitely; there is no purge or
 retention cap in v1 (ChangeLog DEFINE-005, OQ-5 — a deliberate decision, not a default).
@@ -276,7 +279,12 @@ retention cap in v1 (ChangeLog DEFINE-005, OQ-5 — a deliberate decision, not a
 and through the API — this is what Sales/Account reps hold. A maintenance level can additionally
 edit the BBB profile URL and run a refresh — held by Credit & Risk only (ChangeLog DEFINE-005,
 OQ-4). Delivered as the two permission sets in DR-11, each accompanied in `Deployment.md` by the
-base BC permissions a consumer also needs (Standards §5.3).
+base BC permissions a consumer also needs (Standards §5.3). **The BBB Profile URL is writable —
+through the customer record and through the API alike — only by a user holding the maintenance
+permission set.** This is enforced by the field's own `OnValidate` trigger, which refuses the change
+unless the caller holds `OCPFBBB BBBRI, EDIT` (the same write-permission test the refresh action
+uses); it does not depend on, and is not satisfiable by, ordinary standard Customer-modify rights
+alone (ChangeLog **DEFINE-007**, resolving Sanity Check finding F-B-1).
 
 ---
 
@@ -490,9 +498,15 @@ Runbook Step 02 requires this document to be validated against the DEFINE artifa
 | Customer (extend) — Master, Table Extension, R/W, global with US/CA-scoped refresh | **Yes** | E-1; FR-1; DR-4 |
 | BBB Fetch Log — Analytical/audit, new table, system-written, read-only to users | **Yes** | E-2; FR-8, FR-9, FR-10 |
 
-Both PRE-02 entities are present with matching type, R/W intent, and scoping. **No entity from the
-expanded list is deferred or dropped.** The additional objects in §9 (enums, UI, logic, API,
-permission sets) are the delivery mechanics those two entities imply, not new scope.
+Both PRE-02 entities are present, with matching type and scoping. **The Customer row's R/W intent
+needed reconciliation, not a match:** PRE-02 recorded BBB Grade, Accreditation Status, and Complaint
+Count as staff-editable, which DR-6 above corrects — those three are system-owned, and only the
+Profile URL is staff-editable (and, per F-B-1 above, only by the maintenance permission set).
+`ProblemStatement.md` is corrected accordingly and the reconciliation is logged (ChangeLog
+**DEFINE-013**, Sanity Check finding F-S-12); DR-6 is right and the stale PRE-02 wording, not this
+build, was the error. **No entity from the expanded list is deferred or dropped.** The additional
+objects in §9 (enums, UI, logic, API, permission sets) are the delivery mechanics those two entities
+imply, not new scope.
 
 ### 10.2 Every PRE-01 consumer use case is addressed
 

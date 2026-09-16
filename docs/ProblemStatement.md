@@ -158,7 +158,7 @@ Run against Standards Guide Part 6 (Gap Analysis Checklist), 2026-09-16.
 
 | Entity | Type/Tag | R/W Intent | Global vs. Localized |
 |---|---|---|---|
-| Customer (extend) | Master (Table Extension) | Read/Write — BBB Grade, Accreditation Status, Complaint Count, Profile URL are staff-editable; Last Fetched Date/Time and Fetch Status are system-written only. | Global table; the refresh action is validated to Country/Region = US or Canada only (Resolved Decisions). |
+| Customer (extend) | Master (Table Extension) | Read/Write — **(superseded by FRD DR-6 — corrected here, ChangeLog DEFINE-013)**: BBB Grade, Accreditation Status, and Complaint Count are system-owned, written only by the refresh; only the Profile URL is staff-editable, and only by a user holding the maintenance permission set. Last Fetched Date/Time and Fetch Status are system-written only. | Global table; the refresh action is validated to Country/Region = US or Canada only (Resolved Decisions). |
 | BBB Fetch Log | Analytical (audit trail, new Table) | System-written (Insert only); Read-only to users. | Global (mechanism works the same regardless of country; in practice exercised for US/Canada customers only). |
 
 **Gap added and why:** BBB Fetch Log was not in the original initial entity list as a firm

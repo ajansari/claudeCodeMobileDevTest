@@ -23,7 +23,8 @@
 | Symbol Source (§1.4) | AJ Ansari, locally | Cannot download symbols in this session (no AL tooling) — filled in once AJ Ansari downloads symbols locally, per ChangeLog DEFINE-004. |
 | Actual compile-and-package (Step 07) | AJ Ansari, locally | This session writes AL source; AJ Ansari compiles/tests it in local VS Code + AL extension (ChangeLog DEFINE-004). |
 | **OQ-7 / VT-2 — outbound HTTP permission check (PA-3)** | AJ Ansari, locally | Verify whether this SaaS PTE's outbound HTTP calls are permitted by default on the target tenant, or need an administrator to enable them in Extension Management. Gates Batch B2's error handling and `Deployment.md`; does not block B1. |
-| **VT-1 — full symbol verification worksheet** | AJ Ansari, locally | `docs/TDD.md` §16 lists 18 items (table/page numbers, field names, event signatures, `using` namespaces) to confirm against local symbols before Step 06 generates any code. |
+| **VT-1 — full symbol verification worksheet** | AJ Ansari, locally | `docs/TDD.md` §16 now lists 29 items (expanded from 18 by the Sanity Check's F-S-8: table/page numbers, field names, event signatures, `using` namespaces, plus 8 platform-behavior assertions the cascade-delete and permission design depend on) to confirm before Step 06 generates any code. |
+| **F-B-3 fallback — cascade-delete permission model** | AJ Ansari, only if VT-1 shows the assumption wrong | If local verification shows a subscriber codeunit genuinely needs execute permission from every caller (not just VIEW/EDIT holders) to fire on `OnAfterDeleteEvent`, decide the fallback: grant the subscriber codeunit execute permission somewhere every user already has it, or re-scope the cascade. Documented as a contingency in TDD §6.8; not a live decision unless verification triggers it. |
 | **VT-3 — BBB page parse markers (OQ-3)** | AJ Ansari, locally | Open a real BBB profile page and pin down the anchor text for grade/accreditation/complaint count, and exactly what window the complaint figure covers. Gates Batch B2's `ocpfBbbProfileReader` only. |
 | **VT-4 — HTTP-after-write transaction behavior** | AJ Ansari, locally | Confirm whether BC actually refuses an outbound call after a write in the same transaction (TDD §6.10). Doesn't block anything — §7.2's ordering is correct either way — but the reason should be confirmed, not assumed. |
 
@@ -80,3 +81,22 @@
   proposed. Four verification tasks (VT-1–VT-4) carried to local environment — see Open
   Decisions. TDD sign-off deferred to Step 04's close per Approvers = one person. Proceeding to
   Step 04 — Sanity Check.
+- **2026-09-16** — Step 04 (Sanity Check) run by a fresh-eyes reasoning-role instance (Opus 5)
+  that had not seen the FRD/TDD before. Adversarial structured review, not a read-through: 23
+  findings (4 blocking, 12 should-fix, 7 minor). Blocking: FR-11's URL-maintenance permission was
+  unenforceable by this extension's own permission sets (the field lives on standard Customer);
+  no containment for an unexpected runtime error in the BBB page reader, which would silently
+  break the DR-1/DR-2 audit trail; the cascade-delete design rested on two unverified platform
+  assumptions and was untested for users holding neither BBB permission set; an HTTP-specific
+  field (`HTTP Status Code`) leaked into the permanent published API in violation of DR-3's
+  swappable-source guarantee. All 4 resolved by AJ Ansari plus 4 should-fix items needing
+  FRD/design-rule changes (F-S-2 DR-2 wording, F-S-4 ID-range capacity, F-S-5/F-S-6 Standards
+  deviation approvals). Remaining should-fix and minor findings batch-approved and applied by the
+  main role (Sonnet 5) across FRD, TDD, Project Parameters, Object Register, and Problem
+  Statement, with 8 new ChangeLog entries (DEFINE-007 through DEFINE-014). Key outcomes: BBB
+  Profile URL edits now gated by an `OnValidate` permission check (closes FR-11 fully); the
+  leaked field renamed to `Source Status Code`/`sourceStatusCode`; a second object ID range
+  (50621–50650) added for v2 headroom; provider retrieval now mandated to run inside a
+  `[TryFunction]`; cascade-delete re-keyed on the stable `Customer SystemId`; one line of
+  invalid AL pseudo-syntax fixed; a stale PRE-02 note (contradicting DR-6) corrected. Step 03 +
+  Step 04 sign-off requested together from AJ Ansari (Approvers = one person).

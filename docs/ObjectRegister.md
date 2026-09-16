@@ -1,8 +1,10 @@
 # Object Register
 
 **Project:** BBB Rating Insights · **Prefix:** `ocpfBbb` · **Namespace:** `OnlyCopilotFans.BBBInsights`
-**Allocated ID range:** 50601–50620 (20 IDs, primary allocation, no additional ranges — Project
-Parameters §1.2). **No object may ever use an ID outside this range** (FRD DR-12).
+**Allocated ID range:** 50601–50620 (20 IDs, primary allocation) **plus 50621–50650 (30 IDs,
+additional allocation 1, reserved as unassigned headroom for v2 — Project Parameters §1.2, Sanity
+Check finding F-S-4, ChangeLog DEFINE-010).** No v1 object uses any ID from the additional
+allocation. **No object may ever use an ID outside an allocated range** (FRD DR-12).
 **Populated at Step 03 (TDD) — 2026-09-16.** Source of truth for the design behind each row:
 `docs/TDD.md` §3 (modules and allocation), §6 (per-object spec).
 
@@ -21,6 +23,12 @@ Parameters §1.2). **No object may ever use an ID outside this range** (FRD DR-1
 | Tail block — cross-module | 50618–50620 | 3 | 0 | 50618, 50619, 50620 | 100% |
 | **Total** | **50601–50620** | **20** | **13** | **7** | **35%** |
 
+**Additional allocation 1 — 50621–50650 (30 IDs), unassigned, reserved for v2 (F-S-4, ChangeLog
+DEFINE-010).** Not yet grouped into modules — that grouping happens when v2 is actually scoped.
+Sized to comfortably exceed TDD §3.4's four named candidates (a replacement provider codeunit, an
+install/upgrade codeunit pair, a setup table, and a Customer List page extension) plus Standards
+§5.2's per-module minimums once those objects are grouped.
+
 ## 2. Objects
 
 | ID | Object Type | Object Name | Source Table / Object | Module | Batch | R vs R/W | Notes |
@@ -38,10 +46,10 @@ Parameters §1.2). **No object may ever use an ID outside this range** (FRD DR-1
 | 50611 | page (List) | `ocpfBbbFetchLogList` | `ocpfBbbFetchLog` (50603) | M3 | B3 | **Read-only** (`Editable = false`) | FR-9 review surface. **No `UsageCategory`** — DR-9 forbids Tell Me / Departments placement. |
 | 50612 | *(reserved)* | — | — | M3 | — | — | The ID FRD E-6 (FactBox) would have used. **E-6 deliberately not built** (TDD §3.6); ID returned to the buffer and held in case that call is reversed. |
 | 50613 | page (API) | `ocpfBbbCustomerRatings` | **Customer — table 18 — UNVERIFIED, confirm against local symbols** | M4 | B4 | **Editable** (`DelayedInsert = true`) + `InsertAllowed = false`, `DeleteAllowed = false` | Master data → editable per Standards §2.2 (mutability, not preference). Only `ocpfBbbProfileUrl` is writable; read-only access is enforced by the VIEW permission set. `EntityName 'ocpfBbbCustomerRating'` / `EntitySetName 'ocpfBbbCustomerRatings'`. |
-| 50614 | page (API) | `ocpfBbbFetchLogEntries` | `ocpfBbbFetchLog` (50603) | M4 | B4 | **Read-only** (`Editable = false`) | Audit table → read-only per Standards §2.2. `EntityName 'ocpfBbbFetchLogEntry'` / `EntitySetName 'ocpfBbbFetchLogEntries'`. |
+| 50614 | page (API) | `ocpfBbbFetchLogEntries` | `ocpfBbbFetchLog` (50603) | M4 | B4 | **Read-only** (`Editable = false`) | Audit table → read-only per Standards §2.2. `EntityName 'ocpfBbbFetchLogEntry'` / `EntitySetName 'ocpfBbbFetchLogEntries'`. `InsertAllowed = false`, `DeleteAllowed = false` explicit (F-S-7, ChangeLog DEFINE-014) — no user-facing delete path exists; log rows are removed only by the cascade-delete subscriber (50608). |
 | 50615 | *(reserved)* | — | — | M4 | — | — | Growth buffer. |
 | 50616 | permissionset | `OCPFBBB BBBRI, VIEW` | — | M5 | B1 (created), amended B2–B4 | Read | `Assignable = true`, Caption `'BBB Rating Insights - View'`. `tabledata "ocpfBbbFetchLog" = R`. **No execute on 50606/50607** — Sales cannot refresh (OQ-4). Pairs with `D365 READ`. |
-| 50617 | permissionset | `OCPFBBB BBBRI, EDIT` | — | M5 | B1 (created), amended B2–B4 | Read/Write | `Assignable = true`, Caption `'BBB Rating Insights - Edit'`, `IncludedPermissionSets = "OCPFBBB BBBRI, VIEW"`. `tabledata "ocpfBbbFetchLog" = RIMD` + execute on 50606/50607. Credit & Risk only (FR-11/OQ-4). Pairs with `D365 BUS FULL ACCESS`. |
+| 50617 | permissionset | `OCPFBBB BBBRI, EDIT` | — | M5 | B1 (created), amended B2–B4 | Read/Write | `Assignable = true`, Caption `'BBB Rating Insights - Edit'`, `IncludedPermissionSets = "OCPFBBB BBBRI, VIEW"`. `tabledata "ocpfBbbFetchLog" = RID` (narrowed from `RIMD`, F-M-1, ChangeLog DEFINE-014 — no code path ever modifies a log row) + execute on 50606/50607. Credit & Risk only (FR-11/OQ-4). Pairs with `D365 BUS FULL ACCESS`. |
 | 50618–50620 | *(tail block, reserved)* | — | — | cross-module | — | — | Cross-module additions, and the source for a third permission set if one is ever needed (M5 has no in-block buffer). |
 | **—** | interface | `ocpfBbbRatingProvider` | — | M2 | B2 | n/a | **AL interfaces carry no object ID.** The DR-3/NFR-2 isolation boundary: `TryGetRating(...)`. Implemented today by 50607; a future official BBB feed implements the same contract and one assignment line changes (TDD §7.1). |
 
@@ -59,6 +67,9 @@ extension is possible.
 | 50604 | `"ocpfBbb Profile URL"` | Text[250] | `true` | CustomerContent | **Staff (DR-5, FR-6a)** |
 | 50605 | `"ocpfBbb Last Fetched"` | DateTime | `false` | CustomerContent | System (DR-2) |
 | 50606 | `"ocpfBbb Fetch Status"` | Enum `ocpfBbbFetchStatus` | `false` | CustomerContent | System (DR-2) |
+
+**Next free extension field ID on Customer: 50607** (50601–50606 are consumed by the six fields
+above; F-M-5, ChangeLog DEFINE-014).
 
 ## 4. Events (Standards §10.4 — recorded with the objects)
 
@@ -83,7 +94,9 @@ grant in both sets (`PTE0004` / TDD §9.3).
 
 ## 6. Open against this register
 
-- **OD-1 (TDD §11/§15.1):** API caption locking for 50613 and 50614 — awaiting AJ Ansari's
-  interactive decision. Recorded per object, by name, once given.
-- **VT-1 (TDD §16):** every UNVERIFIED marker above must be replaced with a symbol-verified value
-  before Step 06 generates code.
+- **OD-1 (TDD §11/§15.1):** API caption locking for 50613 and 50614 — **Resolved, see ChangeLog
+  DEFINE-006** (this row was stale — F-M-3, ChangeLog DEFINE-014 — corrected here). 50614 classified
+  Technical — admin; both pages set translatable captions.
+- **VT-1 (TDD §16):** every UNVERIFIED marker above, now including the platform-behavior rows added
+  at TDD §16 rows 19–30 (Sanity Check findings F-B-2, F-B-3, F-S-7, F-S-8, F-M-7), must be replaced
+  with a symbol-verified value before Step 06 generates code.

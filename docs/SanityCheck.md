@@ -9,9 +9,9 @@ reviewer had not seen this project before and did not draft `FRD.md` or `TDD.md`
 signed off), `docs/ObjectRegister.md`, `docs/ChangeLog.md` (DEFINE-001 – DEFINE-006),
 `docs/ProjectParameters.md`, `docs/ProblemStatement.md`, and the OCPF AL Development Standards
 Guide v1.9.0.0 (Parts 1–10, Appendices A–E).
-**Status:** Complete — **4 blocking findings**. Technical Lead sign-off on `TDD.md` +
-`SanityCheck.md` (one sign-off, Approvers = one person) should not be given until B-1 … B-4 are
-resolved or explicitly accepted with reasoning.
+**Status:** Complete — **4 blocking findings, all resolved** (see the resolution note below and
+§7a). **Signed off by AJ Ansari, 2026-09-16**, together with `docs/TDD.md` (one sign-off,
+Approvers = one person).
 
 > **Resolution status (added 2026-09-16, main role, after AJ Ansari's decisions):** all 4 blocking
 > and all 12 should-fix findings, plus all 7 minor findings, are now resolved. This document is left

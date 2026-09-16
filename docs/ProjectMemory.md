@@ -98,5 +98,6 @@
   leaked field renamed to `Source Status Code`/`sourceStatusCode`; a second object ID range
   (50621–50650) added for v2 headroom; provider retrieval now mandated to run inside a
   `[TryFunction]`; cascade-delete re-keyed on the stable `Customer SystemId`; one line of
-  invalid AL pseudo-syntax fixed; a stale PRE-02 note (contradicting DR-6) corrected. Step 03 +
-  Step 04 sign-off requested together from AJ Ansari (Approvers = one person).
+  invalid AL pseudo-syntax fixed; a stale PRE-02 note (contradicting DR-6) corrected.
+  **AJ Ansari reviewed both documents directly (files sent) and signed off Steps 03 + 04
+  together, 2026-09-16.** DESIGN phase complete. Proceeding to Step 05 — Plan the Code.

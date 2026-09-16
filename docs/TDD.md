@@ -1525,8 +1525,10 @@ placeholders.
 
 | Role | Name | Decision | Date |
 |---|---|---|---|
-| Technical Lead (also Functional Consultant and Dev Manager — Approvers = one person, Project Parameters §1.1) | AJ Ansari | *pending* | — |
+| Technical Lead (also Functional Consultant and Dev Manager — Approvers = one person, Project Parameters §1.1) | AJ Ansari | **Approved** | 2026-09-16 |
 
-**Step 03 exit gate:** self-sufficiency check passes (§17); **OD-1 and OD-2 are both resolved**
-(§15.1). Under **Approvers = one person**, the Technical Lead sign-off moves to Step 04 and is
-given once, on `TDD.md` and `SanityCheck.md` together.
+**Step 03/04 exit gate: MET.** Self-sufficiency check passes (§17); OD-1 and OD-2 resolved
+(§15.1); all 4 Sanity Check blocking findings and 12 should-fix findings resolved and applied
+(ChangeLog DEFINE-007–DEFINE-014; SanityCheck.md §7a Resolution Log). Signed off by AJ Ansari,
+covering `TDD.md` and `SanityCheck.md` together (Approvers = one person). Proceeding to Step 05
+— Plan the Code.

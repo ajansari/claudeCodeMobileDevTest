@@ -93,6 +93,8 @@ locally once symbols are downloaded.
 future step that would normally invoke `al_*` MCP tools (§1.10 onward) — those steps proceed as
 document/source generation only in this session.
 
+**Updated:** TDD/FRD will each carry a note on this workflow split when first drafted.
+
 ## Issue DEFINE-005 — Step 02 (FRD) Review Findings: One Documentation Bug, Six Real Decisions
 
 **Problem:** The reasoning role's Step 02 review (`docs/FRD.md` §11) surfaced seven open items.
@@ -124,4 +126,36 @@ FR-10/retention, NFR-15/deletion behavior, §11 closed out, §12 sign-off).
 **Updated:** FRD updated directly (see above). TDD not yet written — will inherit all six
 resolved decisions at first draft.
 
-**Updated:** TDD/FRD will each carry a note on this workflow split when first drafted.
+## Issue DEFINE-006 — Step 03 (TDD) API Caption Locking, Decided Interactively
+
+**Problem:** Standards §8.6 requires every API page/query be classified (Business / Technical —
+admin / Technical — internal plumbing) and its caption-locking decision made interactively, per
+object, by a human — never asserted by the drafting role. The reasoning role's Step 03 draft
+(`docs/TDD.md` §11) proposed a classification but correctly left both API pages' decisions open
+as **OD-1**, since `ocpfBbbFetchLogEntries` (50614) was genuinely arguable between Technical —
+admin and Technical — internal plumbing.
+
+**Resolution:** Put to AJ Ansari as two ordered questions, per Standards §8.6 and Step 03's
+procedure:
+- **50614 `ocpfBbbFetchLogEntries` classified as Technical — admin** — an administrator
+  deliberately reads it to diagnose repeated failures (FR-9, BO-5); not pure internal plumbing.
+- **50613 `ocpfBbbCustomerRatings` (Business): Translatable** — following Standards §8.6's
+  recommendation and Microsoft's own precedent (API v2.0: 0 of 1,526 business captions locked).
+- **50614 `ocpfBbbFetchLogEntries` (Technical — admin): Translatable** — following the
+  recommendation for the admin classification (API v2.0 `automation` pages: only 1 of 157
+  locked).
+
+Both API pages therefore set `EntityCaption`/`EntitySetCaption`, even though this project ships
+no translation files for v1 — the property is correct regardless, so a future language addition
+needs no revisit of this decision.
+
+**Also accepted in the same round: OD-2** (optional, non-blocking) — no separate two-character
+display-grade field is added to the API; `Documentation.md` will publish the ordinal → display
+mapping instead, per the reasoning role's proposal (DR-8: current values only, no denormalized
+presentation data).
+
+**Files affected:** `docs/TDD.md` §11 (decision recorded with AJ Ansari's name, per Standards
+§8.6), §6.11/§6.12 (EntityCaption/EntitySetCaption values), §15.1 (both items closed).
+
+**Updated:** TDD updated directly (see above). FRD: no change needed — API caption locking is a
+TDD-level (Step 03) decision, not an FRD-level one.

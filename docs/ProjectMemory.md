@@ -22,7 +22,10 @@
 |---|---|---|
 | Symbol Source (§1.4) | AJ Ansari, locally | Cannot download symbols in this session (no AL tooling) — filled in once AJ Ansari downloads symbols locally, per ChangeLog DEFINE-004. |
 | Actual compile-and-package (Step 07) | AJ Ansari, locally | This session writes AL source; AJ Ansari compiles/tests it in local VS Code + AL extension (ChangeLog DEFINE-004). |
-| **OQ-7 — outbound HTTP permission check (PA-3)** | AJ Ansari, locally | Verify whether this SaaS PTE's outbound HTTP calls are permitted by default on the target tenant, or need an administrator to enable them in Extension Management. Not a sign-off blocker (FRD §11), but must be confirmed before Step 03's retrieval design (E-9 `ocpfBbbProfileReader`) is finalized. |
+| **OQ-7 / VT-2 — outbound HTTP permission check (PA-3)** | AJ Ansari, locally | Verify whether this SaaS PTE's outbound HTTP calls are permitted by default on the target tenant, or need an administrator to enable them in Extension Management. Gates Batch B2's error handling and `Deployment.md`; does not block B1. |
+| **VT-1 — full symbol verification worksheet** | AJ Ansari, locally | `docs/TDD.md` §16 lists 18 items (table/page numbers, field names, event signatures, `using` namespaces) to confirm against local symbols before Step 06 generates any code. |
+| **VT-3 — BBB page parse markers (OQ-3)** | AJ Ansari, locally | Open a real BBB profile page and pin down the anchor text for grade/accreditation/complaint count, and exactly what window the complaint figure covers. Gates Batch B2's `ocpfBbbProfileReader` only. |
+| **VT-4 — HTTP-after-write transaction behavior** | AJ Ansari, locally | Confirm whether BC actually refuses an outbound call after a write in the same transaction (TDD §6.10). Doesn't block anything — §7.2's ordering is correct either way — but the reason should be confirmed, not assumed. |
 
 ## Milestones
 
@@ -64,3 +67,16 @@
   customer, and outbound-HTTP-permission verification carried forward as a local to-do (see
   Open Decisions) rather than a sign-off blocker. **FRD signed off by AJ Ansari, 2026-09-16.**
   Proceeding to Step 03 — Technical Design Document.
+- **2026-09-16** — Step 03 (TDD) drafted by the reasoning role (Opus 5): 13 objects assigned
+  concrete IDs across 50601–50620 (5 modules, 35% overall growth buffer), full per-object and
+  per-field specs, the DR-3 swappable-provider design (an `interface` + two codeunits), complete
+  label inventory, permission set contents with `tabledata` grants, a "no upgrade code needed"
+  decision recorded with reasoning, and an 18-item symbol-verification worksheet (§16). Added one
+  object beyond the FRD list (`ocpfBbbCustomerSubscribers`, cascade-delete/rename subscribers —
+  a delivery mechanic for OQ-6, not new scope) and decided not to build FRD's conditional E-6
+  FactBox (inline card group instead; ID held in reserve). OD-1 (API caption locking, Standards
+  §8.6) resolved interactively: `ocpfBbbFetchLogEntries` classified Technical–admin, both API
+  pages set Translatable (ChangeLog DEFINE-006). OD-2 (no extra display-grade field) accepted as
+  proposed. Four verification tasks (VT-1–VT-4) carried to local environment — see Open
+  Decisions. TDD sign-off deferred to Step 04's close per Approvers = one person. Proceeding to
+  Step 04 — Sanity Check.

@@ -1,7 +1,8 @@
 ### AL ###
 #Template for AL projects for Dynamics 365 Business Central
-#launch.json folder
-.vscode/
+#launch.json only (may hold tenant/connection details); .vscode/settings.json stays tracked —
+#OCPF Step 05 puts the required analyzer settings there and it must ship with the project.
+.vscode/launch.json
 #Cache folder
 .alcache/
 #Symbols folder
@@ -10,8 +11,6 @@
 .snapshots/
 #Testing Output folder
 .output/
-#Extension App-file
-*.app
 #Rapid Application Development File
 rad.json
 #Translation Base-file
@@ -21,3 +20,10 @@ rad.json
 *.flf
 #Test results file
 TestResults.xml
+
+### OCPF Agentic Dev Framework ###
+#Companion guides (fetched from framework repo, not project deliverables)
+standardsGuide/
+opsGuide/
+#Per-developer notification settings (always ignored)
+.ocpf/notifications.json

@@ -1,0 +1,24 @@
+{
+  "id": "9aabe937-d408-4190-b533-1440665a9ed6",
+  "name": "BBB Rating Insights",
+  "publisher": "onlyCopilotFans",
+  "version": "1.0.0.0",
+  "description": "Tracks each customer's Better Business Bureau (BBB) grade, accreditation status, and complaint count in Business Central, refreshed on demand from the customer's BBB profile page.",
+  "dependencies": [],
+  "screenshots": [],
+  "platform": "27.0.0.0",
+  "application": "27.0.0.0",
+  "idRanges": [
+    {
+      "from": 50601,
+      "to": 50620
+    }
+  ],
+  "resourceExposurePolicy": {
+    "allowDebugging": true,
+    "allowDownloadingSource": true,
+    "includeSourceInSymbolFile": true
+  },
+  "runtime": "16.0",
+  "features": ["NoImplicitWith", "TranslationFile"]
+}

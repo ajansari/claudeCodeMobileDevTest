@@ -118,3 +118,13 @@
   checks this session can satisfy vs. defer to local VT-1 verification). **Batch run-through
   agreed: run B1→B4 continuously, stopping only on a pre-flight failure or TDD deviation.**
   Proceeding to Step 06 — Code Generation.
+- **2026-09-16** — Step 06 (Code Generation) complete. Main role (Sonnet 5) generated all 14 AL
+  files across B1–B4 in dependency order, following TDD §6–§13 exactly (field IDs, labels,
+  DR-1/DR-2/DR-3 mechanisms, the corrected `[TryFunction]` containment, `OnValidate` permission
+  check, `Customer SystemId`-keyed cascade delete, translatable API captions). Light role
+  (Haiku 4.5) ran the Pass 2 post-generation checklist against all 14 files: **CLEAN, 0
+  findings.** BBB page parse markers in `ocpfBbbProfileReader.Codeunit.al` are clearly-flagged
+  placeholders (VT-3 — no network access to bbb.org from this session); every call will safely
+  fail closed (DR-1-compliant) until AJ Ansari replaces them locally. Step 07 (mandatory
+  compile-and-package) cannot run in this session — no AL tooling exists here (ChangeLog
+  DEFINE-004). Handing off to AJ Ansari for local compilation.

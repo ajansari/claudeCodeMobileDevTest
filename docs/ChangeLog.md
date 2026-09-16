@@ -367,3 +367,28 @@ sandbox-localization verification row added (F-M-7).
 
 **Updated:** TDD — yes (all items above). FRD — no (none of these ten findings required an FRD
 change).
+
+## Issue DEFINE-015 — Step 06 Code Generation Complete; Step 07 Blocked on Local Environment
+
+**Problem:** All 14 AL source files for BBB Rating Insights were generated per the signed-off TDD
+(Runbook Step 06), and passed the Light role's Pass 2 post-generation checklist clean (0
+findings). Runbook Step 07 requires a mandatory analyzer-enabled compile-and-package — this
+session has no AL compiler (ChangeLog DEFINE-004), so it cannot proceed further under its own
+power.
+
+**Root cause:** Environment limitation, established and accepted at DEFINE-004; this is that
+limitation's BUILD-phase consequence, not a new issue.
+
+**Resolution:** Code generation is complete and committed. Three items remain, all requiring AJ
+Ansari's local VS Code + AL environment before Step 07 can run: (1) download symbols and work the
+29-item verification worksheet (TDD §16, VT-1); (2) confirm outbound HTTP permission on the
+target sandbox (VT-2 / OQ-7 / PA-3); (3) open a real BBB profile page and replace the three
+placeholder parse-marker tokens in `ocpfBbbProfileReader.Codeunit.al` (VT-3 / OQ-3) — every field
+this codeunit lacks will safely fail closed (DR-1-compliant) until then, never writing a wrong
+value. Once symbols are downloaded and the placeholders are replaced, AJ Ansari runs
+`scripts/al-analyze.sh` for the mandatory analyzer-enabled compile and reports results back for
+any needed fixes.
+
+**Files affected:** None (this is a status entry, not a design change).
+
+**Updated:** TDD/FRD: N/A.

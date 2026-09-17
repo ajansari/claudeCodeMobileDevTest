@@ -21,6 +21,7 @@ derive it from this file. Confirmed by AJ Ansari on 2026-09-16.
 | Block | From | To | Notes |
 |---|---|---|---|
 | Primary allocation | 50601 | 50620 | 20 IDs. Expanded from an original 50611–50620 (10 IDs) once a rough object count showed zero growth buffer (Standards §5.2). |
+| Additional allocation 1 | 50621 | 50650 | 30 IDs. Added 2026-09-16, AJ Ansari — Standards §5.2's per-module buffer requirement was not fully met by the primary range at 13 objects/7 reserved (Step 04 Sanity Check finding F-S-4, ChangeLog DEFINE-010). Reserved as unassigned v2 headroom; no v1 object uses it. |
 
 | Parameter | Value |
 |---|---|

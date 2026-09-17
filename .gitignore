@@ -27,3 +27,7 @@ standardsGuide/
 opsGuide/
 #Per-developer notification settings (always ignored)
 .ocpf/notifications.json
+#AL MCP launcher + analyzer-compile scripts (fetched byte-for-byte from the framework repo)
+scripts/
+#OCPF BC AL Patterns library (fetched from ajansari/ocpfBCALPatterns, refreshed on request)
+patterns/

@@ -16,7 +16,6 @@ tableextension 50604 "ocpfBbbCustomerExt" extends Customer // UNVERIFIED — con
             ToolTip = 'Specifies the letter grade the Better Business Bureau has published for this customer, as read from their BBB profile page. "Not Fetched" means BBB data has never been retrieved for this customer; "NR" means BBB retrieved successfully and reports the business as Not Rated.';
             Editable = false;
             DataClassification = CustomerContent;
-            ApplicationArea = All;
             // System-owned (DR-6). Editable = false blocks edits from the UI and from OData
             // (TDD §6.4); it does not block AL code, which is how ocpfBbbRatingMgt writes it.
         }
@@ -26,7 +25,6 @@ tableextension 50604 "ocpfBbbCustomerExt" extends Customer // UNVERIFIED — con
             ToolTip = 'Specifies whether this customer is an accredited business with the Better Business Bureau. Accreditation is a separate fact from the BBB grade: an accredited business can hold any grade, and a non-accredited business can be graded.';
             Editable = false;
             DataClassification = CustomerContent;
-            ApplicationArea = All;
         }
         field(50603; "ocpfBbb Complaint Count"; Integer)
         {
@@ -34,7 +32,6 @@ tableextension 50604 "ocpfBbbCustomerExt" extends Customer // UNVERIFIED — con
             ToolTip = 'Specifies the number of complaints the Better Business Bureau reports against this customer on their BBB profile page.';
             Editable = false;
             DataClassification = CustomerContent;
-            ApplicationArea = All;
         }
         field(50604; "ocpfBbb Profile URL"; Text[250])
         {
@@ -42,7 +39,6 @@ tableextension 50604 "ocpfBbbCustomerExt" extends Customer // UNVERIFIED — con
             ToolTip = 'Specifies the address of this customer''s public Better Business Bureau profile page. Enter it manually; the address must start with https://. This is the page every refresh reads, so an incorrect address attaches another business''s rating to this customer.';
             ExtendedDatatype = Url; // UNVERIFIED — confirm ExtendedDatatype = URL renders a clickable link on the card against local symbols (see TDD §16 row 25)
             DataClassification = CustomerContent;
-            ApplicationArea = All;
             // Staff-owned (DR-5, FR-6a). Editable defaults to true — the only writable field of
             // the six this extension adds.
 
@@ -78,7 +74,6 @@ tableextension 50604 "ocpfBbbCustomerExt" extends Customer // UNVERIFIED — con
             ToolTip = 'Specifies when BBB data was last requested for this customer. This is stamped on every attempt, successful or not, so compare it with BBB Fetch Status before relying on the values shown.';
             Editable = false;
             DataClassification = CustomerContent;
-            ApplicationArea = All;
         }
         field(50606; "ocpfBbb Fetch Status"; Enum "ocpfBbbFetchStatus")
         {
@@ -86,7 +81,6 @@ tableextension 50604 "ocpfBbbCustomerExt" extends Customer // UNVERIFIED — con
             ToolTip = 'Specifies how the last BBB retrieval attempt ended. When this is Failed, the grade, accreditation, and complaint count shown are the last values successfully retrieved and are not current.';
             Editable = false;
             DataClassification = CustomerContent;
-            ApplicationArea = All;
         }
     }
 

@@ -25,7 +25,6 @@ table 50603 "ocpfBbbFetchLog"
             ToolTip = 'Specifies the sequential number of this Fetch Log entry.';
             AutoIncrement = true;
             DataClassification = SystemMetadata;
-            ApplicationArea = All;
         }
         field(2; "Customer No."; Code[20])
         {
@@ -33,7 +32,6 @@ table 50603 "ocpfBbbFetchLog"
             ToolTip = 'Specifies the number of the customer this BBB retrieval attempt was made for.';
             TableRelation = Customer."No."; // UNVERIFIED — confirm table 18 "Customer" and field "No." against local symbols (see TDD §16 rows 1, 4)
             DataClassification = CustomerContent;
-            ApplicationArea = All;
             // Human-filterable link (FR-9). Kept in step with a customer rename by the subscriber
             // in ocpfBbbCustomerSubscribers (TDD §6.8).
         }
@@ -42,7 +40,6 @@ table 50603 "ocpfBbbFetchLog"
             Caption = 'Customer System ID';
             ToolTip = 'Specifies the stable system identifier of the customer this BBB retrieval attempt was made for. This value never changes, even if the customer number is renamed.';
             DataClassification = SystemMetadata;
-            ApplicationArea = All;
             // The stable link: survives a customer number rename, and is what an API consumer
             // joins on (Standards §2.1's reasoning applied to a foreign key).
         }
@@ -51,7 +48,6 @@ table 50603 "ocpfBbbFetchLog"
             Caption = 'Attempted At';
             ToolTip = 'Specifies the date and time this BBB retrieval attempt was made.';
             DataClassification = SystemMetadata;
-            ApplicationArea = All;
             // Set explicitly by the orchestrator. Not the same thing as the platform's
             // SystemCreatedAt: this one is part of the published API contract and is filterable
             // by design.
@@ -61,7 +57,6 @@ table 50603 "ocpfBbbFetchLog"
             Caption = 'Outcome';
             ToolTip = 'Specifies whether this BBB retrieval attempt succeeded or failed.';
             DataClassification = SystemMetadata;
-            ApplicationArea = All;
             // Only Succeeded (1) or Failed (2) is ever written here. NeverFetched (0) is
             // meaningless on a log row and never occurs.
         }
@@ -70,7 +65,6 @@ table 50603 "ocpfBbbFetchLog"
             Caption = 'Failure Reason';
             ToolTip = 'Specifies why this BBB retrieval attempt failed. Blank when the attempt succeeded.';
             DataClassification = SystemMetadata;
-            ApplicationArea = All;
             // Business-readable reason (the same label text the user was shown - TDD §10.2),
             // truncated to 250 with CopyStr.
         }
@@ -79,7 +73,6 @@ table 50603 "ocpfBbbFetchLog"
             Caption = 'Source Status Code';
             ToolTip = 'Specifies the status code returned by the BBB data source for this retrieval attempt. Zero means no response was received. This is diagnostic information and is not shown elsewhere in the product.';
             DataClassification = SystemMetadata;
-            ApplicationArea = All;
             // Diagnostic only - the provider's own status code; HTTP for the current provider
             // (renamed from "HTTP Status Code", ChangeLog DEFINE-008, resolving F-B-4: DR-3
             // forbids a transport-specific name in the permanent published contract). Never
@@ -90,7 +83,6 @@ table 50603 "ocpfBbbFetchLog"
             Caption = 'Profile URL Used';
             ToolTip = 'Specifies the BBB profile page address that was actually read for this retrieval attempt, at the time it was read.';
             DataClassification = CustomerContent;
-            ApplicationArea = All;
             // Which page was actually read, at the time it was read (DR-5 traceability - the URL
             // on the customer may have changed since).
         }
@@ -99,7 +91,6 @@ table 50603 "ocpfBbbFetchLog"
             Caption = 'Duration (ms)';
             ToolTip = 'Specifies how many milliseconds this BBB retrieval attempt took, from request to response.';
             DataClassification = SystemMetadata;
-            ApplicationArea = All;
             // Round-trip duration. The evidence that distinguishes "BBB is slow" from "BBB is
             // blocking us" (NFR-6 timeouts).
         }

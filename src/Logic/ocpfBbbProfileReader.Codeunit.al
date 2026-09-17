@@ -4,7 +4,9 @@ using System.Utilities; // UNVERIFIED — HttpClient/HttpResponseMessage may be 
 
 codeunit 50607 "ocpfBbbProfileReader" implements "ocpfBbbRatingProvider"
 {
-    Caption = 'BBB Profile Reader';
+    // BBB Profile Reader — codeunits have no Caption property (AL object model); this name is
+    // carried by the object name itself. Removed during Step 07 troubleshooting: an invalid
+    // property the TDD's own per-object table incorrectly listed for every codeunit.
 
     // The replaceable component (DR-3/NFR-2). The only object in this extension that knows BBB
     // exists as a website. Responsibilities it must never take on: writing to any table, showing

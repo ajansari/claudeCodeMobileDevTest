@@ -128,3 +128,12 @@
   fail closed (DR-1-compliant) until AJ Ansari replaces them locally. Step 07 (mandatory
   compile-and-package) cannot run in this session — no AL tooling exists here (ChangeLog
   DEFINE-004). Handing off to AJ Ansari for local compilation.
+- **2026-09-17** — Step 07, first troubleshooting round. AJ Ansari opened the code locally and
+  reported two red-underline classes: `ApplicationArea` on table/table-extension fields, `Caption`
+  on codeunits. Both confirmed as real invalid-AL defects (checked `patterns/` first — no match,
+  diagnosed from scratch): `ApplicationArea` doesn't exist on table-level field definitions
+  (page-only property); codeunits have no `Caption` property at all. Root cause: this session's
+  UNVERIFIED discipline covered standard-BC *object* references but not AL *property-legality*
+  facts — a gap now closed in `docs/TDD.md` §5/§6.7/§6.8/§6.10 and `docs/PreflightChecklist.md`
+  (ChangeLog DEFINE-016). Fixed in all 5 affected files. Awaiting AJ Ansari's next local compile
+  attempt.

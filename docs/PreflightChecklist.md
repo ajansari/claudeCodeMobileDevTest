@@ -49,7 +49,13 @@ defined in `docs/TDD.md` §4: B1 (Core Data), B2 (Retrieval & Logic), B3 (User I
 - [ ] Exactly one of `DelayedInsert = true` / `Editable = false` on every API page (Standards
       §2.2, Part 7 anti-pattern) — 50613 `DelayedInsert = true`, 50614 `Editable = false`.
 - [ ] `ODataKeyFields = SystemId` on every API page, never a business key (Standards §2.1).
-- [ ] `Caption`, `ToolTip`, `ApplicationArea = All` on every field, no exceptions (Standards §1.4).
+- [ ] `Caption`, `ToolTip`, `ApplicationArea = All` on every **page/page-extension/API-page**
+      field, no exceptions (Standards §1.4). **`ApplicationArea` does not exist on
+      `table`/`tableextension` field definitions** — a table-owning field gets `Caption`/
+      `ToolTip` only; `ApplicationArea` applies where that field is later placed on a page. Also:
+      **codeunits have no `Caption` property at all** — don't add one. (Both corrected during
+      Step 07 troubleshooting, ChangeLog DEFINE-016 — a real gap in this checklist's own wording
+      that let an invalid property pass a "CLEAN" Light-role review.)
 
 ## Batch-Specific Notes
 

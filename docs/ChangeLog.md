@@ -392,3 +392,41 @@ any needed fixes.
 **Files affected:** None (this is a status entry, not a design change).
 
 **Updated:** TDD/FRD: N/A.
+
+## Issue DEFINE-016 — Step 07 Local Compile: Two Invalid AL Properties Found and Fixed
+
+**Problem:** AJ Ansari opened the generated code in local VS Code and reported red underlines:
+`ApplicationArea` on fields inside `ocpfBbbCustomerExt.TableExt.al` and `ocpfBbbFetchLog.Table.al`
+(15 occurrences), and `Caption` on the object body of all three codeunits
+(`ocpfBbbRatingMgt`, `ocpfBbbProfileReader`, `ocpfBbbCustomerSubscribers`).
+
+**Root cause:** Both are invalid AL syntax, not editor noise. `ApplicationArea` is a
+page/page-extension-field property (it controls which BC "experience tier" shows a field on a UI
+control) — it does not exist on `table`/`tableextension` field definitions at all. Codeunits are
+pure logic objects with no UI representation and have no `Caption` property in the AL object
+model. Neither claim was in `docs/TDD.md` §6.3/§6.4's own field tables, but TDD §6.7/§6.8/§6.10's
+codeunit property tables did list `Caption`, and TDD §5's API-page-template rule ("Caption,
+ToolTip, ApplicationArea = All on every field. No exceptions") was over-applied by the code
+generator to table-level fields too — an ambiguity in scope, not a contradiction, since §5 itself
+is titled for API pages. **This is exactly the class of error Operating Rule 2's UNVERIFIED
+discipline exists to catch, but this session applied that discipline only to *standard BC
+object/field references*, not to *which AL properties are legal on which object type* — a more
+basic class of AL-language fact that also can't be verified without a compiler.** The Light
+role's Pass 2 review reported "CLEAN" because its own checklist wording (`docs/
+PreflightChecklist.md`) carried the same unscoped rule, so it had nothing to catch this against.
+
+**Resolution:** Removed `ApplicationArea = All;` from all 15 field occurrences in the two
+table-level files (their `Caption`/`ToolTip` properties are correct and unaffected). Removed
+`Caption = '...';` from all three codeunit object bodies, replaced with a one-line comment noting
+codeunits have no such property. Corrected `docs/TDD.md` §5 (added an explicit scope note), §6.7,
+§6.8, §6.10 (removed the `Caption` rows), and `docs/PreflightChecklist.md`'s Pass 2 checklist
+(scoped the `ApplicationArea` item to page-type objects, added the codeunit-Caption warning) so
+neither mistake recurs if any object is ever regenerated.
+
+**Files affected:** `src/CoreData/ocpfBbbCustomerExt.TableExt.al`, `src/CoreData/
+ocpfBbbFetchLog.Table.al`, `src/Logic/ocpfBbbRatingMgt.Codeunit.al`, `src/Logic/
+ocpfBbbProfileReader.Codeunit.al`, `src/Logic/ocpfBbbCustomerSubscribers.Codeunit.al`,
+`docs/TDD.md` (§5, §6.7, §6.8, §6.10), `docs/PreflightChecklist.md`.
+
+**Updated:** TDD — yes (see above). FRD — no (implementation-level AL syntax, not a design
+change).

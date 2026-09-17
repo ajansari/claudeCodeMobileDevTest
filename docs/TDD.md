@@ -301,8 +301,14 @@ page <ObjectID> "<EntitySetName>"
 1. **Exactly one** of `DelayedInsert = true` / `Editable = false` per page. Never both, never
    neither (Standards §2.2, Part 7).
 2. `ODataKeyFields = SystemId` on every API page. Never a business key.
-3. `Caption`, `ToolTip`, and `ApplicationArea = All` on **every** field. No exceptions (Standards
-   §1.4).
+3. `Caption`, `ToolTip`, and `ApplicationArea = All` on **every field of this API page**. No
+   exceptions (Standards §1.4). **`ApplicationArea` is a page/page-extension-field property only
+   — it does not exist on `table`/`tableextension` field definitions** (Standards §1.4 governs UI
+   surfaces; a table's own `fields` block never carries it). A table-owning field still gets
+   `Caption`/`ToolTip`; `ApplicationArea` is set only where that field is later placed on a page
+   (§6.5's Customer Card group, or this template's own API page fields). This distinction caused
+   a real compile error during Step 07 troubleshooting (ChangeLog DEFINE-016) — §6.3/§6.4 never
+   claimed otherwise, but generation over-applied this template's rule to table-level fields too.
 4. The page `Caption` is a **complete sentence** — it becomes the entity description in `$metadata`
    (Standards §2.5). `Caption = 'BBB Ratings';` is a defect; see §7.5 and §7.6 for the real ones.
 5. ToolTips are written for an API consumer reading the schema, not just a UI user (Standards §2.6).
@@ -594,9 +600,13 @@ talks only to the interface. Full flow in §7.2.
 
 | Property | Value |
 |---|---|
-| Caption | `'BBB Rating Management'` |
 | File | `ocpfBbbRatingMgt.Codeunit.al` |
 | `using` | `Microsoft.Sales.Customer;` and `Microsoft.Foundation.Address;` — **both UNVERIFIED, confirm against local symbols.** See §8.1 on the two-`using` note. |
+
+**Correction (Step 07 troubleshooting, ChangeLog DEFINE-016):** an earlier draft of this table
+listed a `Caption` property. **Codeunits have no `Caption` property in the AL object model** —
+this was an unverified assumption that produced a real compile error locally. Removed here and
+from the generated file; the object's name (`"ocpfBbbRatingMgt"`) is how it's identified.
 
 **Public surface (the contract other objects may call):**
 
@@ -613,9 +623,11 @@ Internal helpers are `local procedure`: `CheckPreconditions`, `ResolveCountryIso
 
 | Property | Value |
 |---|---|
-| Caption | `'BBB Customer Subscribers'` |
 | `Permissions` | `tabledata "ocpfBbbFetchLog" = RIMD;` |
 | File | `ocpfBbbCustomerSubscribers.Codeunit.al` |
+
+**Correction (Step 07 troubleshooting, ChangeLog DEFINE-016):** codeunits have no `Caption`
+property — a `Caption` row was removed from this table (see §6.7's note for the full reasoning).
 | `using` | `Microsoft.Sales.Customer;` — **UNVERIFIED, confirm against local symbols** |
 
 Named for what it listens to, per Standards §10.1. Two subscribers, both `local procedure`, both
@@ -689,10 +701,12 @@ have re-leaked DR-3 into the one place designed to keep it out.
 
 | Property | Value |
 |---|---|
-| Caption | `'BBB Profile Reader'` |
 | Implements | `"ocpfBbbRatingProvider"` |
 | File | `ocpfBbbProfileReader.Codeunit.al` |
 | `using` | `System.Utilities;` for `HttpClient`/`HttpResponseMessage` handling helpers **if required** — **UNVERIFIED; `HttpClient` may be a platform type needing no `using`. Confirm against local symbols.** |
+
+**Correction (Step 07 troubleshooting, ChangeLog DEFINE-016):** codeunits have no `Caption`
+property — a `Caption` row was removed from this table (see §6.7's note for the full reasoning).
 
 **Responsibilities — all of them, and nothing else:**
 1. Issue exactly **one** HTTPS GET to `ProfileUrl`. No retry, no follow-on request, no bulk loop

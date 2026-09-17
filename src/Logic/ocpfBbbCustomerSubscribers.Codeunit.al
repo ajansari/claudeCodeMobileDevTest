@@ -4,7 +4,9 @@ using Microsoft.Sales.Customer; // UNVERIFIED — confirm the exact namespace ag
 
 codeunit 50608 "ocpfBbbCustomerSubscribers"
 {
-    Caption = 'BBB Customer Subscribers';
+    // BBB Customer Subscribers — codeunits have no Caption property (AL object model); this
+    // name is carried by the object name itself. Removed during Step 07 troubleshooting: an
+    // invalid property the TDD's own per-object table incorrectly listed for every codeunit.
     Permissions = tabledata "ocpfBbbFetchLog" = RIMD;
     // The Permissions property is intended to be why a Sales user can still delete a customer:
     // "OCPFBBB BBBRI, VIEW" grants only R on ocpfBbbFetchLog; without this codeunit-level grant

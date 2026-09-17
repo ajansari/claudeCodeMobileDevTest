@@ -5,7 +5,9 @@ using Microsoft.Foundation.Address; // UNVERIFIED — confirm the exact namespac
 
 codeunit 50606 "ocpfBbbRatingMgt"
 {
-    Caption = 'BBB Rating Management';
+    // BBB Rating Management — codeunits have no Caption property (AL object model); this name
+    // is carried by the object name itself. Removed during Step 07 troubleshooting: an invalid
+    // property the TDD's own per-object table incorrectly listed for every codeunit.
 
     // The orchestrator. It contains no knowledge whatsoever of how BBB data is obtained (DR-3) —
     // it talks only to the "ocpfBbbRatingProvider" interface. The ONLY reference to the concrete

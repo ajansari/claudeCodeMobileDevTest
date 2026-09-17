@@ -14,7 +14,7 @@
 | DESIGN | 04 — Sanity Check and Validation | Completed |
 | BUILD | 05 — Plan the Code | Completed |
 | BUILD | 06 — Code Generation | Completed |
-| BUILD | 07 — Compile and Package, Troubleshoot, Iterate | Blocked — needs AJ Ansari locally |
+| BUILD | 07 — Compile and Package, Troubleshoot, Iterate | In Progress — first troubleshooting round complete |
 | PROVE | 08 — Gap-Fit Test, Fidelity Validation | |
 | PROVE | 09 — Code Review | |
 | PROVE | 10 — Update Design Documents | |

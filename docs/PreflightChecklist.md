@@ -64,7 +64,7 @@ defined in `docs/TDD.md` §4: B1 (Core Data), B2 (Retrieval & Logic), B3 (User I
 | **B1** | Both permission sets created here with their `ocpfBbbFetchLog` `tabledata` grant (`R` in VIEW, `RID` in EDIT — TDD §9, narrowed per ChangeLog DEFINE-014). |
 | **B2** | Contains nearly every UNVERIFIED marker in the project (Customer field names, Country/Region table, event signatures) — gate most tightly against VT-1. `[TryFunction]` containment (ChangeLog DEFINE-014 / F-B-2) is mandatory in `ocpfBbbProfileReader`. VT-3 (BBB page parse markers) must be resolved locally before this batch's provider logic can be finalized. |
 | **B3** | The `OnValidate` permission check on `"ocpfBbb Profile URL"` (ChangeLog DEFINE-007 / F-B-1) must be present. |
-| **B4** | Both API pages set `EntityCaption`/`EntitySetCaption` (translatable, TDD §11). `InsertAllowed = false; DeleteAllowed = false;` explicit on both API pages. |
+| **B4** | Both API pages set `EntityCaption`/`EntitySetCaption` (translatable, TDD §11). A read-only API page (50614) sets **all three** CRUD guards explicit — `InsertAllowed = false; ModifyAllowed = false; DeleteAllowed = false;` — never just two (CR-03, ChangeLog DEFINE-018, correcting this row's earlier two-property wording, which let 50614 ship without `ModifyAllowed`). An editable page (50613) sets only `InsertAllowed = false; DeleteAllowed = false;` per its own mutability (TDD §6.11). |
 
 ## What This Checklist Does Not Replace
 

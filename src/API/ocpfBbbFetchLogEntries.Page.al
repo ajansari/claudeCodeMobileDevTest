@@ -22,10 +22,17 @@ page 50614 "ocpfBbbFetchLogEntries"
     // Standards §2.2: audit / system table → read-only. Setting both Editable = false and
     // DelayedInsert would be the Part 7 anti-pattern (TDD §6.12).
     InsertAllowed = false;
+    ModifyAllowed = false;
     DeleteAllowed = false;
-    // Explicit, not just implied by Editable = false (F-S-7, ChangeLog DEFINE-014). Fetch Log rows
-    // are deleted only by the cascade-delete subscriber (50608), on the customer's own deletion —
-    // there is no user-facing delete path, via the UI or the API (TDD §6.12).
+    // Explicit, not just implied by Editable = false (F-S-7, ChangeLog DEFINE-014; ModifyAllowed
+    // added per CR-03, ChangeLog DEFINE-018 — a read-only API page's read-only intent has to be
+    // encoded as all three CRUD guards, not inferred from Editable alone). Fetch Log rows are
+    // deleted only by the cascade-delete subscriber (50608), on the customer's own deletion —
+    // there is no user-facing insert, modify, or delete path, via the UI or the API (TDD §6.12).
+    DataAccessIntent = ReadOnly;
+    // CR-11, ChangeLog DEFINE-018: this page never writes, so it can serve from a read replica
+    // instead of competing with posting on the primary — useful given FR-10/OQ-5 keeps every log
+    // row forever with no purge. Not applicable to 50613, which is DelayedInsert = true (writable).
 
     layout
     {

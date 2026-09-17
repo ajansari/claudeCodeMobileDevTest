@@ -50,9 +50,13 @@ tableextension 50604 "ocpfBbbCustomerExt" extends Customer // UNVERIFIED — con
                 // Customer write permission is not this extension's access model - a Sales rep
                 // with ordinary tabledata Customer = M can edit any field on the Customer Card,
                 // including this one, through permissioning this extension does not control.
-                // FetchLog.WritePermission() is the same test the refresh action uses (§6.5) to
-                // mean "holds OCPFBBB BBBRI, EDIT".
-                if not FetchLog.WritePermission() then
+                // FetchLog.InsertPermission() is the authority proxy (CR-01, ChangeLog DEFINE-017):
+                // this codeunit's authority model only ever INSERTS Fetch Log rows, never modifies
+                // one, so InsertPermission() is the operation-accurate check, and it resolves
+                // cleanly against the EDIT set's RID grant (which includes I) without depending on
+                // WritePermission()'s exact, unverified semantics (former TDD §16 row 23). Same
+                // test the refresh action uses (§6.5) to mean "holds OCPFBBB BBBRI, EDIT".
+                if not FetchLog.InsertPermission() then
                     Error(NoUrlEditPermissionErr);
 
                 if (Rec."ocpfBbb Profile URL" <> '') and
@@ -63,9 +67,16 @@ tableextension 50604 "ocpfBbbCustomerExt" extends Customer // UNVERIFIED — con
                 // and wrong: clearing them is an overwrite of good data by something that is not
                 // a successful fetch, which DR-1 forbids. The stale-but-stamped values stay until
                 // a refresh replaces them; "ocpfBbb Last Fetched" tells the reader how old they
-                // are. The host is deliberately not validated either: DR-5 says the URL is
-                // staff-entered and staff-owned, and a hardcoded bbb.org host check would be this
-                // extension quietly deciding what a valid BBB page is.
+                // are.
+                //
+                // Scheme vs. host validation (CR-05, ChangeLog DEFINE-017): this trigger checks
+                // only the SCHEME (https://) at data-entry time - DR-5 says the URL is
+                // staff-entered and staff-owned, so this extension does not second-guess *which*
+                // BBB page staff pick. The HOST is validated separately, at fetch time, inside
+                // "ocpfBbbProfileReader" (TDD §6.10, §7.3) - refusing an arbitrary non-bbb.org
+                // host closes the SSRF exposure CR-05 identified without reversing DR-5's
+                // ownership principle: staff still choose which BBB page; the extension only
+                // refuses to place the outbound call to a host that plainly isn't one.
             end;
         }
         field(50605; "ocpfBbb Last Fetched"; DateTime)

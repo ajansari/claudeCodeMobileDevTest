@@ -64,9 +64,15 @@ table 50603 "ocpfBbbFetchLog"
         {
             Caption = 'Failure Reason';
             ToolTip = 'Specifies why this BBB retrieval attempt failed. Blank when the attempt succeeded.';
-            DataClassification = SystemMetadata;
+            DataClassification = CustomerContent;
             // Business-readable reason (the same label text the user was shown - TDD §10.2),
-            // truncated to 250 with CopyStr.
+            // truncated to 250 with CopyStr. Reclassified from SystemMetadata to CustomerContent
+            // (CR-07, ChangeLog DEFINE-017): on an uncaught runtime error this field may now also
+            // carry a bracketed, platform-echoed diagnostic detail (GetLastErrorText(), truncated)
+            // appended after the business reason - text this extension did not author, so it can
+            // no longer be assumed to be pure system metadata. Never shown to the user (NFR-9);
+            // the Message() the user sees uses only the business-readable reason, never this
+            // field's diagnostic suffix.
         }
         field(7; "Source Status Code"; Integer)
         {

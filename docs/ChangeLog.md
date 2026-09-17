@@ -430,3 +430,118 @@ ocpfBbbProfileReader.Codeunit.al`, `src/Logic/ocpfBbbCustomerSubscribers.Codeuni
 
 **Updated:** TDD — yes (see above). FRD — no (implementation-level AL syntax, not a design
 change).
+
+## Issue DEFINE-017 — Early Step 09 Code Review: Nine AJ Ansari Decisions Applied
+
+**Problem:** `docs/CodeReview.md`, an early Step 09 code review run at AJ Ansari's request ahead of
+Step 07's local compile, raised nine findings that each changed a document, a design rule, or a
+signed-off decision (CR-01, CR-02, CR-04, CR-05, CR-07, CR-09, CR-19, CR-23, CR-24) and were
+therefore asked separately from the mechanical bundle (see DEFINE-018), per Operating Rule 6.
+
+**Resolution, decided by AJ Ansari, 2026-09-17, through the interactive options mechanism, applying
+CodeReview.md's own proposed resolution in each case (grouped in one entry per the DEFINE-014
+precedent, each decision separately named):**
+
+- **CR-01 — switch to `InsertPermission()`.** `FetchLog.WritePermission()` was replaced with
+  `FetchLog.InsertPermission()` at all three call sites (the refresh action's permission re-check in
+  `ocpfBbbRatingMgt`, the Customer Card's `OnOpenPage` gating in `ocpfBbbCustomerCardExt`, and the
+  BBB Profile URL field's `OnValidate` check in `ocpfBbbCustomerExt`). This codeunit's authority
+  model only ever *inserts* Fetch Log rows, so `InsertPermission()` is the operation-accurate check,
+  and it resolves cleanly against the EDIT set's `RID` grant without depending on `WritePermission()`'s
+  exact, unverified semantics — closing the Critical risk that a Credit & Risk user holding only
+  `RID` (no `M`) could have been refused a permission they actually hold. Former TDD §16 row 23 is
+  now resolved rather than pending sandbox verification, since `InsertPermission()`'s semantics are
+  unambiguous.
+- **CR-05 — add a bbb.org host pattern check.** `ocpfBbbProfileReader` now validates the profile
+  URL's host against `'https://*.bbb.org/*'` (via `Uri.IsValidUriPattern` — UNVERIFIED, new TDD §16
+  row 31) before issuing the outbound call, failing closed with `InvalidHostReasonTxt` if it doesn't
+  match. FRD DR-5 is refined, not reversed: staff still choose *which* BBB page (DR-5's ownership
+  principle intact), but the extension no longer accepts an arbitrary host, closing the SSRF exposure
+  a staff- and API-writable URL field otherwise created. The field's own `OnValidate` (TDD §6.4) still
+  checks only the scheme at data-entry time — the host check is fetch-time only, inside the provider.
+- **CR-02 — use neutral wording now.** The `CallWasBlockedByEnvironment()` stub (always `false`,
+  making its "not allowed" branch unreachable dead code) and its branching were removed.
+  `CallNotAllowedReasonTxt` and `TimeoutReasonTxt` were replaced with one label,
+  `ConnectionFailedReasonTxt`, covering every case `HttpClient.Get` returns `false` — provisional
+  pending VT-2's local verification; if VT-2 later shows a distinguishable "blocked" signal, the
+  messages can be split again.
+- **CR-04 — optimize now, verify keep/delete locally later.** The rename-tracking subscriber's
+  per-row `FindSet`/`repeat`/`Modify` loop was converted to `FetchLog.ModifyAll("Customer No.",
+  Rec."No.")`. Whether the subscriber is needed at all — BC may already propagate the rename via
+  `"Customer No."`'s own `TableRelation` — is **not resolved here**; it is pending AJ Ansari's local
+  verification (TDD §6.8, §13.1) and the subscriber was not removed.
+- **CR-09 — narrow permissions, bundled with CR-04.** `ocpfBbbCustomerSubscribers`'s
+  `Permissions` property was narrowed from `tabledata "ocpfBbbFetchLog" = RIMD` to `= RMD` — `I` was
+  never used by either subscriber.
+- **CR-07 — capture `GetLastErrorText()`, reclassify the field.** `TryGetRating` (interface and
+  implementation) and `RefreshRating`/`WriteLogEntry` now thread a new `var DiagnosticDetail: Text`
+  out-parameter, populated **only** on the `[TryFunction]`'s caught-error path via
+  `CopyStr(GetLastErrorText(), 1, 250)` — blank on every ordinary business-reason failure.
+  `WriteLogEntry` appends it, bracketed, to `ocpfBbbFetchLog."Failure Reason"` only when non-blank;
+  the `Message()` shown to the user still uses the business-readable `FailureReason` alone, never the
+  diagnostic detail (FRD NFR-9 preserved). `"Failure Reason"`'s `DataClassification` was reclassified
+  from `SystemMetadata` to `CustomerContent`, since it may now carry platform-echoed text this
+  extension did not author.
+- **CR-19 — record the decision, no notice needed.** FRD §7.4 gains NFR-22, stating explicitly that
+  no BC Privacy Notice is registered or required for the outbound call to bbb.org: the data sent
+  (a staff-entered public URL) and received (public BBB rating data) is not personal data (NFR-12),
+  no credentials are stored (NFR-13), and DR-9 forbids the configuration surface a notice would need.
+- **CR-24 — add the testability seam now.** `ocpfBbbRatingMgt` gains a public
+  `SetProvider(NewProvider: Interface "ocpfBbbRatingProvider")` procedure and two codeunit-scoped
+  variables (`OverrideProvider`, `ProviderSet`). `RefreshRating`'s single binding point now reads
+  `if ProviderSet then Provider := OverrideProvider else Provider := ProfileReader;` — production
+  code never calls `SetProvider`, so DR-3/NFR-2's single default binding to `ocpfBbbProfileReader` is
+  unchanged; the seam only lets a future test codeunit exercise DR-1/DR-2's logic without a real
+  HTTPS call.
+- **CR-23 — correct the factual claim (bundled with CR-09).** The claim "no code path in this
+  extension ever modifies a log row" was false — the rename subscriber calls `Modify`/`ModifyAll`.
+  Corrected in three places
+  (`src/Security/OCPFBBBBBBRIEDIT.PermissionSet.al`'s comment, `docs/TDD.md` §9.2, and
+  `docs/ObjectRegister.md` row 50617) to: "no user-facing surface (UI or API) can modify a log row;
+  the only code path that does is the rename-tracking subscriber, which runs under its own
+  codeunit-level Permissions grant (`RMD`), pending CR-04's verification of whether that subscriber
+  is even needed."
+
+**Files affected:** `src/CoreData/ocpfBbbCustomerExt.TableExt.al`, `src/CoreData/
+ocpfBbbFetchLog.Table.al`, `src/Logic/ocpfBbbRatingMgt.Codeunit.al`, `src/Logic/
+ocpfBbbProfileReader.Codeunit.al`, `src/Logic/ocpfBbbCustomerSubscribers.Codeunit.al`, `src/Logic/
+ocpfBbbRatingProvider.Interface.al`, `src/UI/ocpfBbbCustomerCardExt.PageExt.al`, `src/Security/
+OCPFBBBBBBRIEDIT.PermissionSet.al`, `docs/TDD.md` (§6.3, §6.4, §6.5, §6.7, §6.8, §6.9, §6.10, §7.1,
+§7.2, §7.3, §9.2, §10.2, §13.1, §16), `docs/FRD.md` (DR-5, §7.4/NFR-22), `docs/ObjectRegister.md`
+(rows 50608, 50617).
+
+**Updated:** TDD — yes. FRD — yes (DR-5, NFR-22).
+
+## Issue DEFINE-018 — Early Step 09 Code Review: Five Mechanical Fixes Applied
+
+**Problem:** `docs/CodeReview.md` raised five findings with no design consequence (CR-03, CR-06,
+CR-08, CR-11, CR-22), bundled for a single "apply all" approval per Operating Rule 6, the same
+grouping DEFINE-005/DEFINE-014 used for similar bundles.
+
+**Resolution, decided by AJ Ansari, 2026-09-17, applied directly:**
+- **CR-03.** `ModifyAllowed = false;` added to API page 50614 (`ocpfBbbFetchLogEntries`) alongside
+  its existing `InsertAllowed`/`DeleteAllowed` — a read-only API page's read-only intent has to be
+  encoded as all three CRUD guards, not inferred from `Editable = false` alone.
+  `docs/PreflightChecklist.md`'s B4 row now names all three properties so this can't recur.
+- **CR-06.** The `RatingMgt: Codeunit "ocpfBbbRatingMgt"` declaration in `ocpfBbbCustomerCardExt`
+  moved from a page-level `var` into the refresh action's own `OnAction` trigger as a local var —
+  `OCPFBBB BBBRI, VIEW` withholds execute permission on that codeunit, so a page-level global risked
+  a permission error for every Sales user merely opening the Customer Card if AL instantiates page
+  globals eagerly.
+- **CR-08.** The refresh action's promotion converted from the legacy `Promoted =
+  true;`/`PromotedCategory`/`PromotedOnly` properties to the modern `area(Promoted) {
+  group(Category_Process) { actionref(...) } }` shape — UNVERIFIED, the exact syntax for a page
+  extension on this runtime (16.0/BC 27) must be confirmed locally (TDD §16 row 13).
+- **CR-11.** `DataAccessIntent = ReadOnly;` added to API page 50614 only (not 50613, which is
+  writable) — the page never writes, so it can serve from a read replica.
+- **CR-22.** The `name`/`displayName` field's ToolTip on API page 50613 (`ocpfBbbCustomerRatings`)
+  reworded from "Specifies the name of the customer, enough to identify the customer." (FRD
+  requirement phrasing copied verbatim into `$metadata`) to "Specifies the customer's name, as shown
+  on the customer record."
+
+**Files affected:** `src/API/ocpfBbbFetchLogEntries.Page.al`, `src/API/ocpfBbbCustomerRatings.Page.al`,
+`src/UI/ocpfBbbCustomerCardExt.PageExt.al`, `docs/PreflightChecklist.md`, `docs/TDD.md` (§6.5, §6.12,
+§16 rows 13 and 22).
+
+**Updated:** TDD — yes. FRD — no (all five are implementation-level or wording fixes, no design
+change).

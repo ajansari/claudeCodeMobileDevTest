@@ -10,11 +10,26 @@ codeunit 50606 "ocpfBbbRatingMgt"
     // property the TDD's own per-object table incorrectly listed for every codeunit.
 
     // The orchestrator. It contains no knowledge whatsoever of how BBB data is obtained (DR-3) —
-    // it talks only to the "ocpfBbbRatingProvider" interface. The ONLY reference to the concrete
-    // provider codeunit "ocpfBbbProfileReader" in this entire codeunit is the single binding-point
-    // assignment inside RefreshRating below (TDD §7.1) — this is the DR-3 isolation boundary made
-    // structural, and a future change referencing ocpfBbbProfileReader anywhere else in this file
-    // is a defect.
+    // it talks only to the "ocpfBbbRatingProvider" interface. The only reference to the concrete
+    // provider codeunit "ocpfBbbProfileReader" in this entire codeunit is the single DEFAULT
+    // binding-point assignment inside RefreshRating below (TDD §7.1) — this is the DR-3 isolation
+    // boundary made structural, and a future change referencing ocpfBbbProfileReader anywhere
+    // else in this file is a defect. SetProvider (CR-24, ChangeLog DEFINE-017) adds a test-only
+    // seam that can override that default at runtime; it does not add a second reference to the
+    // concrete provider type, so the boundary is unchanged.
+
+    /// <summary>
+    /// Test-only seam (CR-24, ChangeLog DEFINE-017; DR-3/NFR-2 preserved). Stores a provider to be
+    /// used INSTEAD OF the production default the next time RefreshRating runs, so a test
+    /// codeunit can exercise DR-1/DR-2's success/failure logic without a real HTTPS call to
+    /// bbb.org. Production code never calls this: RefreshRating's default binding to
+    /// "ocpfBbbProfileReader" (§7.1) is unchanged unless a test explicitly calls this first.
+    /// </summary>
+    procedure SetProvider(NewProvider: Interface "ocpfBbbRatingProvider")
+    begin
+        OverrideProvider := NewProvider;
+        ProviderSet := true;
+    end;
 
     /// <summary>
     /// FR-2. The single entry point for a BBB refresh. Called by the Customer Card action
@@ -31,14 +46,19 @@ codeunit 50606 "ocpfBbbRatingMgt"
         FailureReason: Text;
         SourceStatusCode: Integer;
         DurationMs: Integer;
+        DiagnosticDetail: Text;
         AttemptedAt: DateTime;
         ProfileUrl: Text;
         Succeeded: Boolean;
     begin
         // Step 1 — Permission re-check (OQ-4 enforced server-side, not just a greyed-out button
         // on the Customer Card — TDD §6.5). Safe to Error here: nothing has been written yet and
-        // no outbound call has been made.
-        if not FetchLog.WritePermission() then
+        // no outbound call has been made. InsertPermission(), not WritePermission() (CR-01,
+        // ChangeLog DEFINE-017): this codeunit only ever INSERTS Fetch Log rows, never modifies
+        // one, so InsertPermission() is the operation-accurate proxy, and it resolves cleanly
+        // against the EDIT set's RID grant (which includes I) without depending on
+        // WritePermission()'s exact, unverified semantics (former TDD §16 row 23).
+        if not FetchLog.InsertPermission() then
             Error(NoRefreshPermissionErr);
 
         // Step 2 — Preconditions, in order, each ending in its own labeled Error (FR-5, DR-4,
@@ -54,9 +74,14 @@ codeunit 50606 "ocpfBbbRatingMgt"
         ProfileUrl := Cust."ocpfBbb Profile URL";
 
         // Step 5 — The whole of DR-3's coupling: this extension knows nothing beyond the
-        // interface contract from this line onward.
-        Provider := ProfileReader; // ← the single binding point in the entire extension (TDD §7.1)
-        Succeeded := Provider.TryGetRating(ProfileUrl, Grade, Accredited, ComplaintCount, FailureReason, SourceStatusCode, DurationMs);
+        // interface contract from this line onward. CR-24 (ChangeLog DEFINE-017): if a test has
+        // called SetProvider, use that provider instead of the production default — the single
+        // default binding point below is otherwise unchanged.
+        if ProviderSet then
+            Provider := OverrideProvider
+        else
+            Provider := ProfileReader; // ← the single default binding point in the entire extension (TDD §7.1)
+        Succeeded := Provider.TryGetRating(ProfileUrl, Grade, Accredited, ComplaintCount, FailureReason, SourceStatusCode, DurationMs, DiagnosticDetail);
 
         // Steps 6–7 — DR-1, the single most important line in this document: a failed refresh
         // never overwrites good data.
@@ -76,7 +101,7 @@ codeunit 50606 "ocpfBbbRatingMgt"
                             // behavior and every other extension's subscribers intact (DR-13).
 
         // Step 9 — On BOTH branches: insert one audit row (DR-2, FR-8).
-        WriteLogEntry(Cust, AttemptedAt, ProfileUrl, Succeeded, FailureReason, SourceStatusCode, DurationMs);
+        WriteLogEntry(Cust, AttemptedAt, ProfileUrl, Succeeded, FailureReason, SourceStatusCode, DurationMs, DiagnosticDetail);
 
         // Step 10 — Raise the extension's single published extension point (§13.2).
         OnAfterRefreshRatingAttempt(Cust, Succeeded);
@@ -175,7 +200,7 @@ codeunit 50606 "ocpfBbbRatingMgt"
         // adds a field write here has broken DR-1.
     end;
 
-    local procedure WriteLogEntry(Cust: Record Customer; AttemptedAt: DateTime; ProfileUrl: Text; Succeeded: Boolean; FailureReason: Text; SourceStatusCode: Integer; DurationMs: Integer)
+    local procedure WriteLogEntry(Cust: Record Customer; AttemptedAt: DateTime; ProfileUrl: Text; Succeeded: Boolean; FailureReason: Text; SourceStatusCode: Integer; DurationMs: Integer; DiagnosticDetail: Text)
     var
         FetchLog: Record "ocpfBbbFetchLog";
     begin
@@ -190,7 +215,16 @@ codeunit 50606 "ocpfBbbRatingMgt"
             FetchLog."Outcome" := Enum::"ocpfBbbFetchStatus"::Succeeded
         else
             FetchLog."Outcome" := Enum::"ocpfBbbFetchStatus"::Failed;
-        FetchLog."Failure Reason" := CopyStr(FailureReason, 1, MaxStrLen(FetchLog."Failure Reason"));
+        // CR-07 (ChangeLog DEFINE-017): the log field carries the business-readable reason plus,
+        // when a platform diagnostic was captured (uncaught-error path only), that diagnostic in
+        // brackets — never the other way around, and never shown to the user (NFR-9): the
+        // Message() at step 11 above uses FailureReason alone. AL has no ternary operator
+        // (F-S-10, ChangeLog DEFINE-014), hence the explicit if/else rather than an inline
+        // conditional expression.
+        if DiagnosticDetail <> '' then
+            FetchLog."Failure Reason" := CopyStr(FailureReason + ' [' + DiagnosticDetail + ']', 1, MaxStrLen(FetchLog."Failure Reason"))
+        else
+            FetchLog."Failure Reason" := CopyStr(FailureReason, 1, MaxStrLen(FetchLog."Failure Reason"));
         FetchLog."Source Status Code" := SourceStatusCode;
         FetchLog."Profile URL Used" := CopyStr(ProfileUrl, 1, MaxStrLen(FetchLog."Profile URL Used"));
         FetchLog."Duration (ms)" := DurationMs;
@@ -198,6 +232,8 @@ codeunit 50606 "ocpfBbbRatingMgt"
     end;
 
     var
+        OverrideProvider: Interface "ocpfBbbRatingProvider"; // CR-24, ChangeLog DEFINE-017 — test-only seam; set only via SetProvider
+        ProviderSet: Boolean; // CR-24, ChangeLog DEFINE-017 — true once a test has called SetProvider
         NoRefreshPermissionErr: Label 'You do not have permission to refresh BBB data. Ask your administrator for the BBB Rating Insights - Edit permission set.';
         NoCustomerWritePermissionErr: Label 'You do not have write permission on customer %1. Ask your administrator for edit rights on the customer, then try refreshing BBB data again.', Comment = '%1 = Customer No.';
         NoProfileUrlErr: Label 'Enter a BBB profile URL for customer %1 before refreshing BBB data.', Comment = '%1 = Customer No.';

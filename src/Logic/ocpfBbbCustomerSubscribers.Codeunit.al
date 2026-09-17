@@ -7,7 +7,12 @@ codeunit 50608 "ocpfBbbCustomerSubscribers"
     // BBB Customer Subscribers — codeunits have no Caption property (AL object model); this
     // name is carried by the object name itself. Removed during Step 07 troubleshooting: an
     // invalid property the TDD's own per-object table incorrectly listed for every codeunit.
-    Permissions = tabledata "ocpfBbbFetchLog" = RIMD;
+    Permissions = tabledata "ocpfBbbFetchLog" = RMD;
+    // Narrowed from RIMD to RMD (CR-09, ChangeLog DEFINE-017): I is never used by either
+    // subscriber below — neither one inserts a log row. R is required for the SetRange/ModifyAll
+    // below; D is required for the cascade delete; M is required for the rename follow-through
+    // (pending CR-04's verification of whether that subscriber is even needed).
+    //
     // The Permissions property is intended to be why a Sales user can still delete a customer:
     // "OCPFBBB BBBRI, VIEW" grants only R on ocpfBbbFetchLog; without this codeunit-level grant
     // the cascade would otherwise fail with a permission error on an operation the user is
@@ -16,6 +21,11 @@ codeunit 50608 "ocpfBbbCustomerSubscribers"
     // code running as an event subscriber, and (ii) that execute permission on a subscriber
     // codeunit is required for it to fire at all. Step 12 must test customer deletion under both
     // permission sets AND under neither (TDD §9.4 tests 4-5).
+    //
+    // CR-23 (ChangeLog DEFINE-017): no user-facing surface (UI or API) can modify a log row; the
+    // only code path that does is the rename-tracking subscriber below, which runs under this
+    // codeunit-level Permissions grant, pending CR-04's verification of whether that subscriber
+    // is even needed.
 
     // Named for what it listens to, per Standards §10.1. Two subscribers, both local procedure,
     // both doing one thing and returning, neither raising UI — a customer delete or rename can
@@ -50,11 +60,14 @@ codeunit 50608 "ocpfBbbCustomerSubscribers"
     var
         FetchLog: Record "ocpfBbbFetchLog";
     begin
+        // CR-04 (ChangeLog DEFINE-017): converted from a FindSet/repeat/Modify loop to ModifyAll —
+        // a per-row Modify with no validation is the exact anti-pattern ModifyAll exists to avoid.
+        // Whether this whole subscriber is even needed is a separate, still-open question: BC may
+        // already propagate a customer rename to this field automatically via its TableRelation
+        // (this table sets no ValidateTableRelation = false), which would make this subscriber a
+        // no-op costing a database round-trip on every rename. Pending AJ Ansari's local
+        // verification (TDD §6.8) — not removed here, only its performance shape fixed.
         FetchLog.SetRange("Customer No.", xRec."No."); // UNVERIFIED — "No.", see TDD §16 row 4
-        if FetchLog.FindSet(true) then
-            repeat
-                FetchLog."Customer No." := Rec."No.";
-                FetchLog.Modify();
-            until FetchLog.Next() = 0;
+        FetchLog.ModifyAll("Customer No.", Rec."No.");
     end;
 }

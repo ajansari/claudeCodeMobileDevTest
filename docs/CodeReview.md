@@ -1,5 +1,29 @@
 # Code Review — BBB Rating Insights
 
+> ## ✅ RESOLUTION UPDATE — 2026-09-17 (main role) — see §13 Resolution Log
+>
+> **AJ Ansari decided all nine document-touching findings and the five-item mechanical bundle on
+> 2026-09-17**, through the interactive options mechanism, following this document's own proposed
+> resolutions. The main role has applied every decision to the AL source and to `docs/TDD.md`,
+> `docs/FRD.md`, `docs/ObjectRegister.md`, and `docs/PreflightChecklist.md` (ChangeLog **DEFINE-017**
+> for CR-01, CR-02, CR-04, CR-05, CR-07, CR-09, CR-19, CR-23, CR-24; ChangeLog **DEFINE-018** for the
+> mechanical bundle CR-03, CR-06, CR-08, CR-11, CR-22).
+>
+> **This document's findings below are left exactly as written — a historical record of the
+> independent review — and are not edited for content.** §13 at the end of this file is the
+> resolution log: what changed, where, and under which ChangeLog entry, for each of the 14 findings
+> actioned in this round. The remaining findings (CR-10, CR-12 through CR-17, CR-20, CR-21) are
+> **still open**, except **CR-18, which AJ Ansari explicitly declined for v1** (see §13) — neither
+> is a gap in this pass; they were simply not part of what AJ Ansari was asked to decide this round.
+>
+> **This is still a pre-compile review** — the caveats in the original banner immediately below
+> (no AL Language extension, no compiler, no symbol files, in this session) remain true of the fixes
+> just applied, exactly as they were true of the code before them. Every `UNVERIFIED` marker this
+> round's fixes introduced (the new `Uri` check, CR-05; the `area(Promoted)`/`actionref` shape,
+> CR-08) is marked as such and added to TDD §16's worksheet, the same discipline as everything else
+> in this project. **Re-run or re-confirm this review after Step 07's local compile closes 0/0**,
+> per this document's own §12 recommended order of work.
+
 > ## ⚠️ EARLY / SOURCE-LEVEL REVIEW — PENDING A CONFIRMED CLEAN LOCAL COMPILE
 >
 > **This is Runbook Step 09 run out of sequence, at AJ Ansari's explicit request.** Normally Step
@@ -1211,7 +1235,50 @@ retested."*
 
 ---
 
+## 13. Resolution Log (added 2026-09-17, main role — this document's content above is otherwise left
+untouched as the historical record of the independent review)
+
+All decisions below were made by **AJ Ansari, 2026-09-17**, through the interactive options
+mechanism, applying this document's own proposed resolution in each case, and applied by the main
+role. Full cross-reference is `docs/ChangeLog.md` DEFINE-017/DEFINE-018; each resolution's
+design-document detail is cited there and in `docs/TDD.md`.
+
+| # | Finding | Decision | Applied in | ChangeLog |
+|---|---|---|---|---|
+| CR-01 | `WritePermission()` as refresh/URL-edit authority proxy could refuse a permission the caller holds | Switch to `Record.InsertPermission()` at all three call sites | `ocpfBbbCustomerCardExt.PageExt.al`, `ocpfBbbRatingMgt.Codeunit.al`, `ocpfBbbCustomerExt.TableExt.al`; TDD §6.4, §6.5, §7.2, §16 row 23 | DEFINE-017 |
+| CR-02 | `CallWasBlockedByEnvironment()` stub made `CallNotAllowedReasonTxt` unreachable dead code; every connection failure reported as a timeout | Remove the stub; merge into one neutral `ConnectionFailedReasonTxt`, provisional pending VT-2 | `ocpfBbbProfileReader.Codeunit.al`; TDD §7.3, §10.2, §16 row 29 | DEFINE-017 |
+| CR-03 | API page 50614 missing `ModifyAllowed = false` | Add the property; checklist corrected to name all three CRUD guards | `ocpfBbbFetchLogEntries.Page.al`; `docs/PreflightChecklist.md` B4; TDD §6.12, §16 row 22 | DEFINE-018 |
+| CR-04 | Rename subscriber may be dead code (platform may already propagate the rename); per-row `Modify` loop is an anti-pattern regardless | Optimize now (`ModifyAll`); keep/delete decision deferred to AJ Ansari's local verification | `ocpfBbbCustomerSubscribers.Codeunit.al`; TDD §6.8, §13.1 | DEFINE-017 |
+| CR-05 | No host validation on the outbound call — SSRF exposure via a staff/API-writable URL field | Add `Uri.IsValidUriPattern(ProfileUrl, 'https://*.bbb.org/*')` (UNVERIFIED) before the call; refine FRD DR-5, not reverse it | `ocpfBbbProfileReader.Codeunit.al`, `ocpfBbbCustomerExt.TableExt.al`; FRD DR-5; TDD §6.4, §6.10, §7.3, §16 row 31 | DEFINE-017 |
+| CR-06 | Page-level `RatingMgt` global risked a permission error on every Customer Card open | Move the declaration into the refresh action's own `OnAction` trigger | `ocpfBbbCustomerCardExt.PageExt.al`; TDD §6.5 | DEFINE-018 |
+| CR-07 | `GetLastErrorText()` discarded on the provider's caught-error path; log field misclassified for text it might now carry | Capture into new `DiagnosticDetail` out-parameter (caught-error path only); append to the log's `"Failure Reason"`, never to the user-facing `Message()`; reclassify the field to `CustomerContent` | `ocpfBbbRatingProvider.Interface.al`, `ocpfBbbProfileReader.Codeunit.al`, `ocpfBbbRatingMgt.Codeunit.al`, `ocpfBbbFetchLog.Table.al`; TDD §6.3, §6.9, §7.2, §7.3, §10.2 | DEFINE-017 |
+| CR-08 | Legacy `Promoted`/`PromotedCategory`/`PromotedOnly` properties on the refresh action | Convert to `area(Promoted) { group(Category_Process) { actionref(...) } }` (UNVERIFIED shape) | `ocpfBbbCustomerCardExt.PageExt.al`; TDD §6.5, §16 row 13 | DEFINE-018 |
+| CR-09 | Subscriber codeunit's `Permissions` grant (`RIMD`) wider than either subscriber uses | Narrow to `RMD` (`I` unused) | `ocpfBbbCustomerSubscribers.Codeunit.al`; TDD §6.8; ObjectRegister row 50608 | DEFINE-017 |
+| CR-11 | API page 50614 never writes but carries no `DataAccessIntent` | Add `DataAccessIntent = ReadOnly;` (50614 only) | `ocpfBbbFetchLogEntries.Page.al`; TDD §6.12 | DEFINE-018 |
+| CR-19 | No recorded decision on whether a BC Privacy Notice is required for the outbound call | Record the decision: none required, per NFR-12/NFR-13/DR-9 | FRD §7.4 (new NFR-22) | DEFINE-017 |
+| CR-22 | API `displayName` ToolTip copied FRD requirement phrasing verbatim into `$metadata` | Reword to describe the field | `ocpfBbbCustomerRatings.Page.al` | DEFINE-018 |
+| CR-23 | "No code path ever modifies a log row" is false (the rename subscriber does) | Correct the wording in three places to name the actual code path and its own permission grant | `OCPFBBBBBBRIEDIT.PermissionSet.al`; TDD §9.2; ObjectRegister row 50617 | DEFINE-017 |
+| CR-24 | No seam to inject a test provider; `RefreshRating`'s safety-critical logic untestable without a real HTTPS call | Add `SetProvider` test-only seam; production default binding unchanged | `ocpfBbbRatingMgt.Codeunit.al`; TDD §6.7, §7.1 | DEFINE-017 |
+| CR-18 | Plain `Error` on two preconditions instead of `ErrorInfo` with a navigation action | **Declined by AJ Ansari for v1 — not a gap.** The refresh action is already raised from the Customer Card the navigation action would target, so the genuine gain (an API/OData caller, a future entry point) was judged not worth the change for this release. Revisit if a non-UI entry point to `RefreshRating` is ever added. | — | — |
+
+**Still open, not part of this round:** CR-10 (missing `IsTemporary()` guard in the subscribers),
+CR-12 (Duration measurement type/window), CR-13 (unused-parameter warning risk on `ApplyFailure`),
+CR-14 (file encoding / non-ASCII in labels), CR-15 (AL member-shape verification, folded into TDD
+§16), CR-16 (possibly-unused `using System.Utilities;`), CR-17 (Standards-vs-BCQuality caption/
+tooltip conflict — surfaced, not resolved, per this document's own §2.1/CR-17 text), CR-20 (response
+size cap / content-integrity check), CR-21 (OData schema-version note for `Documentation.md`). None
+of these was put to AJ Ansari in this round; they remain exactly as this document originally left
+them.
+
+**Exit gate re-assessment:** unchanged from §12 above — this round closed the nine document-touching
+findings and the five-item mechanical bundle, but Step 09's exit gate still waits on Step 07's local
+compile (0 errors/0 warnings), symbol verification (VT-1), and re-confirmation of this review against
+the post-compile code, exactly as §12 already said.
+
+---
+
 *Prepared by the reasoning role under the OnlyCopilotFans Agentic Dev Framework v3.3.0.0, Runbook
 Step 09 (early). No `.al` file and no other project document was modified in producing it. Every
 finding is either cited to a named BCQuality knowledge file or marked as a reviewer finding with its
-confidence stated.*
+confidence stated. §13 above was added the following day by the main role, applying AJ Ansari's
+decisions; the reviewer's original findings (§§1–12) are otherwise unedited.*

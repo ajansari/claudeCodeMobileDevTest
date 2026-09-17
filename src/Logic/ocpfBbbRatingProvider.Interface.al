@@ -16,6 +16,10 @@ interface "ocpfBbbRatingProvider"
     /// local procedure, and convert any caught failure into false + UnexpectedReasonTxt +
     /// SourceStatusCode = 0 (F-B-2, ChangeLog DEFINE-014) — an uncaught runtime error here must
     /// never be allowed to propagate and roll back the caller's stamp and log write.
+    /// DiagnosticDetail (CR-07, ChangeLog DEFINE-017) is populated ONLY on that same caught-error
+    /// path, from GetLastErrorText() — left blank on every other path, including an ordinary
+    /// business-reason failure (unreachable page, bad status code, unparseable content). It is a
+    /// platform diagnostic for the log only; it must never be shown to the user (FRD NFR-9).
     /// </summary>
-    procedure TryGetRating(ProfileUrl: Text; var Grade: Enum "ocpfBbbGrade"; var Accredited: Boolean; var ComplaintCount: Integer; var FailureReason: Text; var SourceStatusCode: Integer; var DurationMs: Integer): Boolean
+    procedure TryGetRating(ProfileUrl: Text; var Grade: Enum "ocpfBbbGrade"; var Accredited: Boolean; var ComplaintCount: Integer; var FailureReason: Text; var SourceStatusCode: Integer; var DurationMs: Integer; var DiagnosticDetail: Text): Boolean
 }

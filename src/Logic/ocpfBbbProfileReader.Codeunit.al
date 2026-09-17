@@ -30,7 +30,7 @@ codeunit 50607 "ocpfBbbProfileReader" implements "ocpfBbbRatingProvider"
     /// below (F-B-2, ChangeLog DEFINE-014) — an uncaught runtime error there is converted into an
     /// ordinary parse failure and never escapes this procedure.
     /// </summary>
-    procedure TryGetRating(ProfileUrl: Text; var Grade: Enum "ocpfBbbGrade"; var Accredited: Boolean; var ComplaintCount: Integer; var FailureReason: Text; var SourceStatusCode: Integer; var DurationMs: Integer): Boolean
+    procedure TryGetRating(ProfileUrl: Text; var Grade: Enum "ocpfBbbGrade"; var Accredited: Boolean; var ComplaintCount: Integer; var FailureReason: Text; var SourceStatusCode: Integer; var DurationMs: Integer; var DiagnosticDetail: Text): Boolean
     var
         StartTime: DateTime;
         EndTime: DateTime;
@@ -39,6 +39,7 @@ codeunit 50607 "ocpfBbbProfileReader" implements "ocpfBbbRatingProvider"
         StartTime := CurrentDateTime();
         FailureReason := '';
         SourceStatusCode := 0;
+        DiagnosticDetail := '';
         Success := false;
 
         if not TryFetchAndParse(ProfileUrl, Grade, Accredited, ComplaintCount, FailureReason, SourceStatusCode, Success) then begin
@@ -47,9 +48,17 @@ codeunit 50607 "ocpfBbbProfileReader" implements "ocpfBbbRatingProvider"
             // propagate and roll back the caller's stamp and log write. REVIEWER-UNVERIFIED
             // (TDD §16 row 19): the exact scope of what [TryFunction] does and does not catch
             // must be confirmed locally before this batch is relied on.
+            //
+            // CR-07 (ChangeLog DEFINE-017): capture the platform's own diagnosis for the log —
+            // and ONLY here, on this caught-error path, never on an ordinary business-reason
+            // failure below. GetLastErrorText() must be read immediately after the failed call,
+            // since the session error buffer can be overwritten by a later one. This text goes to
+            // the log field only (via WriteLogEntry in ocpfBbbRatingMgt) — never to the user
+            // (NFR-9); FailureReason (below) is what the Message() to the user actually shows.
             Success := false;
             FailureReason := UnexpectedReasonTxt;
             SourceStatusCode := 0;
+            DiagnosticDetail := CopyStr(GetLastErrorText(), 1, 250);
         end;
 
         EndTime := CurrentDateTime();
@@ -63,21 +72,35 @@ codeunit 50607 "ocpfBbbProfileReader" implements "ocpfBbbRatingProvider"
     var
         HttpClient: HttpClient; // UNVERIFIED — confirm type name/namespace requirement against local symbols (see TDD §16 row 14)
         HttpResponseMessage: HttpResponseMessage; // UNVERIFIED — see TDD §16 row 14
+        Uri: Codeunit Uri; // UNVERIFIED — confirm the "Uri" data type/codeunit name and IsValidUriPattern's exact method name and signature against local symbols (CR-05, new TDD §16 row; see also TDD §6.10, §7.3)
         ResponseBody: Text;
     begin
         Success := false;
 
+        // Host validation (CR-05, ChangeLog DEFINE-017): the field's own OnValidate
+        // (ocpfBbbCustomerExt.TableExt.al) checks only the scheme at data-entry time — DR-5 keeps
+        // *which* BBB page a staff-owned decision. This check is the fetch-time guardrail: it
+        // refuses to place the outbound call at all unless the URL's host is a bbb.org address,
+        // closing the SSRF exposure of calling an arbitrary attacker-supplied host. UNVERIFIED —
+        // confirm Uri.IsValidUriPattern's exact name/signature locally before this batch is relied
+        // on (see the Uri variable's UNVERIFIED note above).
+        if not Uri.IsValidUriPattern(ProfileUrl, BbbHostPatternTok) then begin
+            FailureReason := InvalidHostReasonTxt;
+            SourceStatusCode := 0;
+            exit;
+        end;
+
         HttpClient.Timeout := 20000; // UNVERIFIED — confirm HttpClient.Timeout property against local symbols (TDD §16 row 14). NFR-6: a timeout is an ordinary failure under FR-4, not an exception.
         HttpClient.DefaultRequestHeaders.Add('User-Agent', UserAgentTok); // UNVERIFIED — confirm DefaultRequestHeaders API shape against local symbols (TDD §16 row 14)
 
+        // CR-02 (ChangeLog DEFINE-017): HttpClient.Get returning false covers a blocked outbound
+        // call, DNS failure, connection refused, TLS failure, and an actual timeout alike — AL
+        // exposes no way from this session to tell them apart (the former CallWasBlockedByEnvironment
+        // stub always returned false, which made the "not allowed" branch and its label dead code,
+        // CR-02). One neutral, honest reason covers all of them until VT-2 proves otherwise.
         if not HttpClient.Get(ProfileUrl, HttpResponseMessage) then begin // UNVERIFIED — confirm HttpClient.Get signature against local symbols (TDD §16 row 14). NFR-3: exactly one GET, no retry, no follow-on request, no bulk loop.
-            if CallWasBlockedByEnvironment() then begin
-                FailureReason := CallNotAllowedReasonTxt;
-                SourceStatusCode := 0;
-            end else begin
-                FailureReason := TimeoutReasonTxt;
-                SourceStatusCode := 0;
-            end;
+            FailureReason := ConnectionFailedReasonTxt;
+            SourceStatusCode := 0;
             exit;
         end;
 
@@ -111,17 +134,6 @@ codeunit 50607 "ocpfBbbProfileReader" implements "ocpfBbbRatingProvider"
         end;
 
         Success := true;
-    end;
-
-    local procedure CallWasBlockedByEnvironment(): Boolean
-    begin
-        // REVIEWER-UNVERIFIED (TDD §16 row 29 / OQ-7, PA-3): whether HttpClient/HttpResponseMessage
-        // exposes a dedicated indicator that an outbound call was blocked by the tenant's "Allow
-        // HttpClient Requests" setting, as opposed to a genuine timeout. Until AJ Ansari confirms
-        // this locally, every non-completing call is reported as a timeout (TimeoutReasonTxt)
-        // rather than "not allowed" (CallNotAllowedReasonTxt) — this stub always returns false.
-        // Replace it once §16 row 29 is resolved.
-        exit(false);
     end;
 
     local procedure MapStatusCodeToReason(StatusCode: Integer): Text
@@ -236,13 +248,24 @@ codeunit 50607 "ocpfBbbProfileReader" implements "ocpfBbbRatingProvider"
     end;
 
     var
-        CallNotAllowedReasonTxt: Label 'Business Central is not allowed to make outbound web requests for this extension. Ask your administrator to allow HttpClient requests for BBB Rating Insights.';
-        TimeoutReasonTxt: Label 'The BBB website did not respond in time.';
+        // CR-02 (ChangeLog DEFINE-017): CallNotAllowedReasonTxt and TimeoutReasonTxt were replaced
+        // with one neutral, honest reason — ConnectionFailedReasonTxt — since the former
+        // CallWasBlockedByEnvironment() stub always returned false, making the "not allowed"
+        // branch and its label unreachable dead code (Standards §1.5), and every genuine
+        // connection-level failure (blocked call, DNS failure, connection refused, TLS failure,
+        // or an actual timeout) was being reported to the user as "did not respond in time" —
+        // which sends an administrator to the wrong place when the real cause is a blocked
+        // outbound call. Provisional pending VT-2's local verification: if VT-2 shows outbound
+        // calls really are blocked with a distinguishable signal, the messages can be split again.
+        ConnectionFailedReasonTxt: Label 'Business Central could not reach the BBB website. If this is the first refresh on this environment, ask your administrator to confirm that outbound web requests are allowed for BBB Rating Insights.';
         NotFoundReasonTxt: Label 'The BBB profile page was not found at the address recorded for this customer.';
         BlockedReasonTxt: Label 'The BBB website refused the request.';
         UnavailableReasonTxt: Label 'The BBB website is currently unavailable.';
         ParseFailedReasonTxt: Label 'The BBB profile page was reached but could not be read in the expected format. The page layout may have changed.';
         UnexpectedReasonTxt: Label 'The BBB profile page could not be read.';
+        // CR-05 (ChangeLog DEFINE-017): the fetch-time host guardrail's reason and its pattern.
+        InvalidHostReasonTxt: Label 'The BBB profile URL must point to a bbb.org address.';
+        BbbHostPatternTok: Label 'https://*.bbb.org/*', Locked = true;
         UserAgentTok: Label 'BusinessCentral-BBBRatingInsights/1.0', Locked = true;
         GradeAnchorPlaceholderTok: Label 'PLACEHOLDER_GRADE_ANCHOR — REPLACE BEFORE USE', Locked = true;
         AccreditedAnchorPlaceholderTok: Label 'PLACEHOLDER_ACCREDITED_ANCHOR — REPLACE BEFORE USE', Locked = true;

@@ -54,7 +54,10 @@ page 50613 "ocpfBbbCustomerRatings"
                 field(displayName; Rec.Name) // UNVERIFIED — confirm field "Name" against local symbols (see TDD §16 row 5)
                 {
                     Caption = 'Display Name';
-                    ToolTip = 'Specifies the name of the customer, enough to identify the customer.';
+                    ToolTip = 'Specifies the customer''s name, as shown on the customer record.';
+                    // Reworded per CR-22, ChangeLog DEFINE-018 — the previous wording ("...enough
+                    // to identify the customer") copied FRD requirement phrasing verbatim into
+                    // user-facing $metadata text instead of describing the field.
                     Editable = false;
                     ApplicationArea = All;
                 }

@@ -137,3 +137,23 @@
   facts — a gap now closed in `docs/TDD.md` §5/§6.7/§6.8/§6.10 and `docs/PreflightChecklist.md`
   (ChangeLog DEFINE-016). Fixed in all 5 affected files. Awaiting AJ Ansari's next local compile
   attempt.
+- **2026-09-17** — Full early Code Review (Step 09, run ahead of sequence at AJ Ansari's request)
+  by the reasoning role (Opus 5): 24 findings (1 critical, 7 major, 14 minor, 2 info) against the
+  Standards Guide's Anti-Patterns table and the BCQuality knowledge snapshot (routed to
+  `al-code-review`, 307 articles walked, 10 knowledge-backed findings). Most consequential: the
+  permission model's `WritePermission()` check could have locked out the only role allowed to use
+  the feature once the EDIT grant was narrowed for least privilege (Sanity Check F-M-1); an SSRF
+  exposure from an unvalidated outbound host; a stub that made an error label unreachable and
+  misdirected every connection failure; a possibly-dead event subscriber with a per-row
+  performance anti-pattern. AJ Ansari decided all 9 findings that touched a design rule or
+  document; 5 more were purely mechanical. **All 14 applied** by the main role (Sonnet 5):
+  switched to `InsertPermission()` (resolves the critical finding without needing sandbox
+  verification of `WritePermission()`'s semantics), added a bbb.org host-pattern check, unified
+  the connection-failure messaging, converted a loop to `ModifyAll`, threaded `GetLastErrorText()`
+  into the log only (never the user), added a test-only provider seam preserving DR-3, narrowed a
+  codeunit's own permission grant, corrected a factual claim repeated across three documents,
+  recorded a privacy-notice decision, and fixed 5 mechanical items (missing `ModifyAllowed`,
+  legacy action-promotion syntax, a page-scope permission risk, a missing `DataAccessIntent` hint,
+  a tooltip wording fix). 10 findings remain open/deferred (compile-dependent, or explicitly
+  declined for v1 — CR-18) — see `docs/CodeReview.md`'s Resolution Log. ChangeLog DEFINE-017,
+  DEFINE-018. Still awaiting AJ Ansari's first clean local compile.
